@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>迷你高爾夫</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden}
+body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;background:linear-gradient(#7cc8f5 0%,#bfe6fb 50%,#e6f6ff 100%);color:#1d2a33;user-select:none;-webkit-user-select:none}
+#stage{position:fixed;inset:0}
+#stage canvas{display:block;cursor:grab}
+#stage canvas.aiming{cursor:crosshair}
+#labels{position:fixed;inset:0;pointer-events:none}
+.label{position:absolute;transform:translate(-50%,-100%);font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.75);white-space:nowrap}
+.panel{background:rgba(255,255,255,.88);backdrop-filter:blur(6px);border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);padding:10px 14px}
+.hidden{display:none!important}
+#holeInfo{position:fixed;top:16px;left:16px;min-width:180px}
+#holeInfo .big{font-size:22px;font-weight:800}
+#holeInfo .sub{font-size:13px;color:#4a5a66;margin-top:2px}
+#board{position:fixed;top:16px;right:16px;font-size:14px;min-width:240px}
+#board table{border-collapse:collapse;width:100%}
+#board th{font-size:12px;color:#5a6a76;font-weight:600;text-align:right;padding:2px 6px}
+#board th:first-child,#board td:first-child{text-align:left}
+#board td{padding:4px 6px;text-align:right}
+#board tr.cur td{font-weight:800;background:rgba(47,158,91,.12)}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;border:1px solid rgba(0,0,0,.3);vertical-align:-1px}
+#turn{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);font-size:15px;font-weight:600;text-align:center;white-space:nowrap}
+#power{position:fixed;right:30px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:8px}
+#powerLabel{font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#powerBar{width:24px;height:230px;border-radius:12px;background:rgba(0,0,0,.28);overflow:hidden;position:relative;border:2px solid rgba(255,255,255,.85)}
+#powerFill{position:absolute;bottom:0;left:0;right:0;height:0;background:#4caf50}
+#powerTxt{font-weight:800;font-size:18px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+#tools{position:fixed;bottom:20px;right:16px;display:flex;gap:8px}
+button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:600;background:#fff;color:#1d2a33;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+button:hover{background:#eef3f6}
+button.primary{background:#2f9e5b;color:#fff;font-size:17px;padding:12px 30px}
+button.primary:hover{background:#278a4e}
+#help{position:fixed;bottom:20px;left:16px;font-size:12px;line-height:1.75;color:#33434e}
+#help b{color:#1d2a33}
+#toast{position:fixed;top:24%;left:50%;transform:translate(-50%,-40%);font-size:36px;font-weight:900;color:#fff;text-shadow:0 3px 12px rgba(0,0,0,.5);pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,-60%)}
+#toast small{display:block;font-size:18px;font-weight:700;text-align:center}
+.overlay{position:fixed;inset:0;background:rgba(8,30,18,.5);display:flex;align-items:center;justify-content:center;z-index:10}
+.box{background:#fff;border-radius:18px;padding:28px 34px;box-shadow:0 12px 40px rgba(0,0,0,.25);max-width:94vw;max-height:92vh;overflow:auto}
+#menu h1{font-size:38px;letter-spacing:2px}
+#menu .lead{color:#556570;margin:6px 0 20px}
+#menu h3{font-size:15px;margin-top:4px}
+.seg{display:flex;gap:6px;margin:8px 0 18px}
+.seg button{box-shadow:none;background:#eef2f5}
+.seg button.on{background:#2f9e5b;color:#fff}
+#best{font-size:14px;color:#556570;margin:0 0 18px}
+#diffDesc{font-size:13px;color:#556570;margin:-10px 0 18px}
+.howto{font-size:13px;color:#556570;line-height:1.8;margin-top:18px;border-top:1px solid #e3e8ec;padding-top:14px}
+.score-table{border-collapse:collapse;margin:14px 0 20px;font-size:15px}
+.score-table th,.score-table td{border:1px solid #dde3e8;padding:6px 11px;text-align:center}
+.score-table th{background:#f3f6f8;font-weight:700}
+.score-table td.name{text-align:left;white-space:nowrap}
+.under{color:#1f8a4c;font-weight:800}
+.over{color:#c0392b}
+#cardTitle{font-size:26px}
+#cardSub{color:#556570;margin-top:4px}
+#menu .box{width:620px}
+.tabs{display:flex;margin:0 0 16px;border-bottom:2px solid #e3e8ec}
+.tabs button{box-shadow:none;background:none;border-radius:0;padding:8px 18px;color:#6a7a86;border-bottom:3px solid transparent;margin-bottom:-2px;font-size:15px}
+.tabs button:hover{background:none;color:#1d2a33}
+.tabs button.on{color:#1d2a33;border-bottom-color:#2f9e5b}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+.names{display:flex;gap:8px;flex-wrap:wrap;margin:-8px 0 16px}
+.names input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid #cfd8de;border-radius:8px;width:118px}
+.note{font-size:13px;color:#556570;margin:-6px 0 14px}
+.row{display:flex;gap:10px;align-items:center}
+.skinBtn{display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:15px}
+.skin-grid{display:grid;grid-template-columns:repeat(4,150px);gap:10px;margin:14px 0 8px}
+.skin-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;background:#f5f8fa;box-shadow:none;border:2px solid transparent}
+.skin-card.sel{border-color:#2f9e5b;background:#eaf6ef}
+.skin-card.locked{cursor:default}
+.skin-card.locked:hover{background:#f5f8fa}
+.skin-card.locked canvas{filter:grayscale(1) brightness(.55)}
+.skin-card small{font-size:12px;color:#6a7a86;font-weight:500;text-align:center;line-height:1.4}
+#statsLine{color:#556570;font-size:14px;margin-top:4px}
+.unlock{margin:-6px 0 18px;padding:10px 14px;background:#fff7e0;border-radius:10px;font-weight:700;color:#8a5a00;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.unlock small{font-weight:500}
+#turn .dot{margin-right:8px}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels"></div>
+
+<div id="hud" class="hidden">
+  <div id="holeInfo" class="panel">
+    <div class="big">第 <span id="holeNo">1</span> 洞 / 5</div>
+    <div class="sub" id="holeName"></div>
+    <div class="sub">標準桿 <b id="par">2</b></div>
+  </div>
+  <div id="board" class="panel"></div>
+  <div id="turn" class="panel"></div>
+  <div id="power" class="hidden">
+    <div id="powerLabel">力量</div>
+    <div id="powerBar"><div id="powerFill"></div></div>
+    <div id="powerTxt">0%</div>
+  </div>
+  <div id="help" class="panel">
+    <b>按住球往後拉</b>：調整方向與力量，放開擊球<br>
+    <b>拖曳空白處 / 右鍵拖曳</b>：繞著球旋轉視角<br>
+    <b>滾輪</b>：拉近拉遠　<b>A D / ← →</b>：旋轉視角<br>
+    <b>V</b>：鳥瞰全場　<b>Esc</b>：取消這一桿
+  </div>
+  <div id="tools">
+    <button id="btnBird">鳥瞰 (V)</button>
+    <button id="btnMenu">回主選單</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="menu" class="overlay">
+  <div class="box">
+    <h1>⛳ 迷你高爾夫</h1>
+    <p class="lead">共有 10 種球場。跟電腦比賽，或在同一台電腦和朋友輪流打。</p>
+    <div class="tabs" id="segMode"><button data-v="std" class="on">標準模式</button><button data-v="custom">自訂模式</button></div>
+    <div id="stdPanel">
+      <h3>電腦對手人數</h3>
+      <div class="seg" id="segCount">
+        <button data-v="1">1 位</button><button data-v="2" class="on">2 位</button><button data-v="3">3 位</button>
+      </div>
+      <h3>難度</h3>
+      <div class="seg" id="segDiff">
+        <button data-v="easy">簡單</button><button data-v="normal" class="on">普通</button><button data-v="hard">困難</button>
+      </div>
+      <p id="diffDesc"></p>
+    </div>
+    <div id="customPanel" class="hidden">
+      <h3>玩家人數（同一台電腦輪流打）</h3>
+      <div class="seg" id="segHumans">
+        <button data-v="1">1 位</button><button data-v="2" class="on">2 位</button><button data-v="3">3 位</button><button data-v="4">4 位</button>
+      </div>
+      <div class="names" id="nameInputs"></div>
+      <h3>電腦人數</h3>
+      <div class="seg" id="segAI">
+        <button data-v="0">0 位</button><button data-v="1" class="on">1 位</button><button data-v="2">2 位</button><button data-v="3">3 位</button><button data-v="4">4 位</button>
+      </div>
+      <div id="aiDiffRow">
+        <h3>電腦難度</h3>
+        <div class="seg" id="segAIDiff">
+          <button data-v="easy">簡單</button><button data-v="normal" class="on">普通</button><button data-v="hard">困難</button>
+        </div>
+      </div>
+      <h3>球場</h3>
+      <div class="seg" id="segSet">
+        <button data-v="easy">基本五洞</button><button data-v="normal" class="on">混合</button><button data-v="hard">進階五洞</button><button data-v="random">全部隨機</button>
+      </div>
+      <p class="note" id="customNote"></p>
+    </div>
+    <p id="best"></p>
+    <div class="row">
+      <button class="primary" id="btnStart">開始比賽</button>
+      <button class="skinBtn" id="btnSkins"><canvas id="skinMini" width="28" height="28"></canvas>球造型</button>
+    </div>
+    <div class="howto">
+      玩法：按住自己的球往後拉，拉越遠力量越大，球會往反方向射出；拉的時候左右移動可以改方向。<br>
+      地形：沙坑會讓球大幅減速；水池會減速，而且水流會推著球走（看白點和水紋流動的方向）；冰面很滑；進階球場的地面有高低起伏，球會往低處滾。<br>
+      單洞最多 10 桿。
+    </div>
+  </div>
+</div>
+
+<div id="skins" class="overlay hidden">
+  <div class="box">
+    <h2>球造型</h2>
+    <p id="statsLine"></p>
+    <div class="skin-grid" id="skinGrid"></div>
+    <p class="note" style="margin-top:8px">只有「1 位玩家對電腦」的比賽會計入名次紀錄。</p>
+    <button class="primary" id="skinClose">完成</button>
+  </div>
+</div>
+
+<div id="card" class="overlay hidden">
+  <div class="box">
+    <h2 id="cardTitle"></h2>
+    <p id="cardSub"></p>
+    <div id="cardBody"></div>
+    <button class="primary" id="cardBtn"></button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ================= 常數 ================= */
+const BALL_R = 0.18, HOLE_R = 0.34, WALL_T = 0.3, WALL_H = 0.45;
+const MAX_PULL = 4, MAX_SPEED = 18, DT = 1 / 240, MAX_STROKES = 10;
+const GRASS = { a: 3.0, k: 0.6 }, SAND = { a: 11, k: 2.2 }, ICE = { a: 1.2, k: 0.2 }, WATER = { a: 14, k: 3.5 };
+const MILL_T = 0.25, HUB_R = 0.35;
+const WALL_E = 0.7, BOX_E = 0.8, HOLE_PULL = 9, HOLE_CAPTURE = 4.5, STOP_V = 0.06;
+const DIFF = {
+  easy:   { label: '簡單', n: 50,  refine: 0,   ang: 0.10,  pow: 0.14 },
+  normal: { label: '普通', n: 140, refine: 40,  ang: 0.045, pow: 0.07 },
+  hard:   { label: '困難', n: 300, refine: 100, ang: 0.018, pow: 0.03 },
+};
+
+/* ================= 球場資料 ================= */
+// 座標為 [x, z]，sand / water 為 {x, z, w, d}（中心與寬深）
+const COURSES = [
+  { name: '暖身直道', par: 2,
+    poly: [[-3, 10], [3, 10], [3, -10], [-3, -10]],
+    tee: [0, 7.5], hole: [0, -7],
+    walls: [], circles: [{ x: 0, z: 0, r: 0.6 }], boxes: [], sand: [], water: [] },
+  { name: '右轉彎道', par: 3,
+    poly: [[-3, 10], [3, 10], [3, -2], [14, -2], [14, -8], [-3, -8]],
+    tee: [0, 7.5], hole: [11, -5],
+    walls: [], circles: [{ x: 7.5, z: -4.6, r: 0.5 }], boxes: [],
+    sand: [{ x: 4.6, z: -7.1, w: 3, d: 1.6 }], water: [] },
+  { name: '湖畔', par: 3,
+    poly: [[-5, 12], [5, 12], [5, -12], [-5, -12]],
+    tee: [1, 9.5], hole: [-2, -8.5],
+    walls: [], circles: [{ x: -3.2, z: -5, r: 0.5 }, { x: 0.2, z: -5.5, r: 0.5 }], boxes: [],
+    sand: [{ x: 1.5, z: -9.6, w: 2.6, d: 1.4 }], water: [{ x: -1.25, z: 0.5, w: 7.5, d: 3, flow: [1.6, 0] }] },
+  { name: '之字迴廊', par: 4,
+    poly: [[-6, 14], [6, 14], [6, -14], [-6, -14]],
+    tee: [-3, 11], hole: [3, -10],
+    walls: [[[-6, 5], [2, 5]], [[-2, -4], [6, -4]]],
+    circles: [{ x: 0, z: 0.5, r: 0.6 }, { x: 3.6, z: 1.8, r: 0.5 }, { x: -4, z: -1.6, r: 0.5 }], boxes: [],
+    sand: [{ x: 4.6, z: -12, w: 2.4, d: 2 }], water: [] },
+  { name: '移動閘門', par: 3,
+    poly: [[-4, 12], [4, 12], [4, -10], [-4, -10]],
+    tee: [0, 9], hole: [0, -7],
+    walls: [[[-4, 0], [-1.1, 0]], [[1.1, 0], [4, 0]]],
+    circles: [{ x: -2, z: -5.5, r: 0.45 }, { x: 2, z: -5.5, r: 0.45 }],
+    boxes: [{ x: 0, z: -2, hx: 0.9, hz: 0.3, move: { amp: 2.2, speed: 1.4 } }],
+    sand: [], water: [{ x: -2.8, z: 4.5, w: 2.4, d: 3, flow: [0, 1.4] }, { x: 2.8, z: 4.5, w: 2.4, d: 3, flow: [0, 1.4] }] },
+];
+
+// 進階五洞：更長、更複雜
+// ice：冰面區（很滑）、slopes：坡道（dir 為往下坡的方向、g 為加速度）、mills：旋轉風車（hl 半長、w 角速度）
+const EXTRA = [
+  { name: '冰原長廊', par: 4, theme: 'ice',
+    poly: [[-3, 24], [3, 24], [3, 4], [10, -4], [10, -24], [4, -24], [4, -6], [-3, 2]],
+    tee: [0, 21], hole: [7, -20],
+    circles: [{ x: 0, z: 12, r: 0.7 }, { x: 5.2, z: -2.4, r: 0.6 }, { x: 7.6, z: -11, r: 0.7 }],
+    boxes: [{ x: 7, z: -15, hx: 1.2, hz: 0.3, move: { axis: 'x', amp: 1.6, speed: 1.1 } }],
+    sand: [{ x: 7, z: -23, w: 6, d: 1.6 }, { x: 0, z: 5.5, w: 6, d: 1.4 }],
+    terrain: { ramps: [{ axis: 'z', from: 18, to: 7, dh: -1.6 }, { axis: 'z', from: -4, to: -14, dh: -1.0 }],
+               hills: [{ x: 7, z: -20, r: 2.4, h: -0.3 }] } },
+  { name: '風車山谷', par: 5,
+    poly: [[-5, 22], [5, 22], [5, -22], [-5, -22]],
+    tee: [-2, 19], hole: [-2.5, -19],
+    walls: [[[-5, 8], [1.5, 8]], [[-1.5, -8], [5, -8]]],
+    circles: [{ x: -3.5, z: -3, r: 0.5 }],
+    mills: [{ x: 0, z: 14, hl: 2.6, w: 1.3 }, { x: 0, z: 0, hl: 2.8, w: -1.1 }, { x: 0, z: -15, hl: 2.6, w: 1.6 }],
+    sand: [{ x: 2.5, z: -20, w: 3, d: 2 }],
+    terrain: { ramps: [{ axis: 'z', from: 7.5, to: 4, dh: -0.8 }, { axis: 'z', from: -8.5, to: -12, dh: -0.8 }],
+               valleys: [{ axis: 'x', center: 0, width: 5.2, depth: 1.1 }] } },
+  { name: '梯田迷宮', par: 5,
+    poly: [[-8, 26], [8, 26], [8, -26], [-8, -26]],
+    tee: [-5, 22], hole: [-4, -20],
+    walls: [[[-8, 14], [4, 14]], [[-4, 2], [8, 2]], [[-8, -10], [4, -10]]],
+    circles: [{ x: 0, z: 20, r: 0.6 }, { x: -1.5, z: -16, r: 0.5 }],
+    sand: [{ x: 6, z: 20, w: 3, d: 3 }],
+    terrain: { ramps: [{ axis: 'z', from: 15.5, to: 12, dh: -1.2 }, { axis: 'z', from: 3.5, to: 0, dh: -1.2 }, { axis: 'z', from: -8.5, to: -12, dh: -1.2 }],
+               hills: [{ x: -3, z: 8, r: 2.6, h: 0.55 }, { x: 2.5, z: -4.5, r: 2.6, h: 0.55 }, { x: 4, z: -19, r: 2.4, h: 0.4 }] } },
+  { name: '雙門湖區', par: 5,
+    poly: [[-7, 24], [7, 24], [7, -24], [-7, -24]],
+    tee: [0, 21], hole: [3, -19],
+    walls: [[[-7, 16], [-2, 16]], [[2, 16], [7, 16]], [[-7, -10], [-4, -10]], [[0, -10], [7, -10]]],
+    circles: [{ x: 4, z: 6, r: 0.6 }, { x: -4.5, z: -18, r: 0.5 }],
+    boxes: [{ x: 0, z: 14.8, hx: 1.2, hz: 0.3, move: { axis: 'x', amp: 2.5, speed: 1.2 } },
+            { x: -2, z: -10, hx: 1.4, hz: 0.35, move: { axis: 'z', amp: 2, speed: 1.0 } }],
+    water: [{ x: -3.5, z: 10, w: 7, d: 6, flow: [1.5, 0] }, { x: 3.5, z: -3, w: 7, d: 6, flow: [0, -1.6] }, { x: -2, z: -14.5, w: 6, d: 3, flow: [1.5, 0] }],
+    terrain: { hills: [{ x: 4, z: -15, r: 3, h: 0.6 }, { x: -4, z: 3, r: 3, h: 0.55 }, { x: 3.5, z: 19.5, r: 2.2, h: 0.35 }] } },
+  { name: '終極挑戰', par: 5,
+    poly: [[-4, 26], [4, 26], [4, 0], [22, 0], [22, -14], [10, -14], [10, -8], [-4, -8]],
+    tee: [0, 23], hole: [19, -11],
+    circles: [{ x: -2, z: -4, r: 0.5 }],
+    ice: [{ x: 0, z: 16, w: 8, d: 12 }],
+    mills: [{ x: 0, z: 5, hl: 3.2, w: 1.2 }],
+    boxes: [{ x: 16, z: -6, hx: 0.4, hz: 1.4, move: { axis: 'z', amp: 3.5, speed: 1.3 } }],
+    sand: [{ x: 20, z: -5, w: 3, d: 2 }],
+    water: [{ x: 6, z: -4, w: 3, d: 6, flow: [1.8, 0] }],
+    terrain: { ramps: [{ axis: 'z', from: 15, to: 8.5, dh: -1.5 }],
+               hills: [{ x: 13, z: -4, r: 3.4, h: 0.7 }, { x: 19, z: -11, r: 2.4, h: 0.45 }] } },
+];
+
+// 依難度決定這場比賽的五個洞
+function pickHoles(diff) {
+  const pick = (arr, n) => { const idx = arr.map((_, i) => i); for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; } return idx.slice(0, n).sort((a, b) => a - b).map(i => arr[i]); };
+  if (diff === 'easy') return COURSES.slice();
+  if (diff === 'hard') return EXTRA.slice();
+  if (diff === 'random') { const all = COURSES.concat(EXTRA); for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [all[i], all[j]] = [all[j], all[i]]; } return all.slice(0, 5); }
+  return [COURSES[0], ...pick(COURSES.slice(1), 2), ...pick(EXTRA, 2)];
+}
+
+// 地形高度：ramps 是沿 x 或 z 的斜坡（平滑過渡），hills 是小山丘（h 為負就是凹地），valleys 是長條形山谷
+const GRAV = 7;
+function smooth01(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+function heightAt(T, x, z) {
+  let h = 0;
+  for (const r of T.ramps || []) h += r.dh * smooth01(((r.axis === 'x' ? x : z) - r.from) / (r.to - r.from));
+  for (const k of T.hills || []) { const d = Math.hypot(x - k.x, z - k.z); if (d < k.r) { const c = Math.cos(d / k.r * Math.PI / 2); h += k.h * c * c; } }
+  for (const v of T.valleys || []) { const d = Math.abs((v.axis === 'x' ? x : z) - v.center); if (d < v.width) { const c = Math.cos(d / v.width * Math.PI / 2); h -= v.depth * c * c; } }
+  return h;
+}
+
+// 把球場資料整理成物理計算要用的格式（不含畫面）
+function makeC(def) {
+  const P = def.poly, segs = [];
+  for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; segs.push([a[0], a[1], b[0], b[1]]); }
+  for (const w of def.walls || []) segs.push([w[0][0], w[0][1], w[1][0], w[1][1]]);
+  const mills = def.mills || [];
+  const C = {
+    def, poly: P, segs, hole: def.hole, ground: def.theme === 'ice' ? ICE : GRASS,
+    circles: (def.circles || []).concat(mills.map(m => ({ x: m.x, z: m.z, r: HUB_R }))),
+    boxes: (def.boxes || []).map(b => Object.assign({}, b)),
+    sand: def.sand || [], water: def.water || [], ice: def.ice || [], slopes: def.slopes || [], mills,
+    terrain: def.terrain || null,
+  };
+  C.h = C.terrain ? (x, z) => heightAt(C.terrain, x, z) : () => 0;
+  buildField(C);
+  return C;
+}
+
+/* ================= 小工具 ================= */
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function gauss() { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function inRect(x, z, r) { return Math.abs(x - r.x) <= r.w / 2 && Math.abs(z - r.z) <= r.d / 2; }
+function inAny(x, z, list) { for (const r of list) if (inRect(x, z, r)) return true; return false; }
+function pointInPoly(x, z, P) {
+  let inside = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const [xi, zi] = P[i], [xj, zj] = P[j];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+let CX = 0, CZ = 0;
+function closest(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
+  let t = L2 ? ((px - ax) * dx + (pz - az) * dz) / L2 : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  CX = ax + t * dx; CZ = az + t * dz;
+}
+// 方塊在時間 t 的位置與速度（BX, BZ, BVX, BVZ）
+let BX = 0, BZ = 0, BVX = 0, BVZ = 0;
+function boxAt(b, t) {
+  BX = b.x; BZ = b.z; BVX = 0; BVZ = 0;
+  if (!b.move) return;
+  const off = b.move.amp * Math.sin(t * b.move.speed), v = b.move.amp * b.move.speed * Math.cos(t * b.move.speed);
+  if (b.move.axis === 'z') { BZ += off; BVZ = v; } else { BX += off; BVX = v; }
+}
+function millAng(m, t) { return (m.phase || 0) + m.w * t; }
+function angDiff(a, b) { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
+function seeded(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+
+/* ================= 物理 ================= */
+// 球碰到一個點（牆、石頭、風車）時推開並反彈；vbx/vbz 是障礙物本身的速度
+function resolve(b, px, pz, R, e, vbx = 0, vbz = 0) {
+  let dx = b.x - px, dz = b.z - pz;
+  const d2 = dx * dx + dz * dz;
+  if (d2 >= R * R) return false;
+  let d = Math.sqrt(d2);
+  if (d < 1e-6) { dx = 0; dz = 1; d = 1; }
+  const nx = dx / d, nz = dz / d;
+  b.x = px + nx * R; b.z = pz + nz * R;
+  const rvx = b.vx - vbx, rvz = b.vz - vbz, vn = rvx * nx + rvz * nz;
+  if (vn < 0) { b.vx -= (1 + e) * vn * nx; b.vz -= (1 + e) * vn * nz; }
+  return true;
+}
+function collideBox(b, x0, z0, hx, hz, vbx, vbz) {
+  const qx = clamp(b.x, x0 - hx, x0 + hx), qz = clamp(b.z, z0 - hz, z0 + hz);
+  const dx = b.x - qx, dz = b.z - qz, d = Math.hypot(dx, dz);
+  if (d >= BALL_R) return false;
+  let nx, nz;
+  if (d > 1e-6) { nx = dx / d; nz = dz / d; b.x = qx + nx * BALL_R; b.z = qz + nz * BALL_R; }
+  else {
+    const px = hx - Math.abs(b.x - x0), pz = hz - Math.abs(b.z - z0);
+    if (px < pz) { nx = Math.sign(b.x - x0) || 1; nz = 0; b.x = x0 + nx * (hx + BALL_R); }
+    else { nx = 0; nz = Math.sign(b.z - z0) || 1; b.z = z0 + nz * (hz + BALL_R); }
+  }
+  const rvx = b.vx - vbx, rvz = b.vz - vbz, vn = rvx * nx + rvz * nz;
+  if (vn < 0) { b.vx = rvx - (1 + BOX_E) * vn * nx + vbx; b.vz = rvz - (1 + BOX_E) * vn * nz + vbz; }
+  return true;
+}
+function collideStatic(b, C) {
+  const R = BALL_R + WALL_T / 2;
+  let hit = false;
+  for (const s of C.segs) { closest(b.x, b.z, s[0], s[1], s[2], s[3]); if (resolve(b, CX, CZ, R, WALL_E)) hit = true; }
+  for (const c of C.circles) if (resolve(b, c.x, c.z, c.r + BALL_R, WALL_E)) hit = true;
+  return hit;
+}
+function collideMoving(b, C, t) {
+  let hit = false;
+  for (const bx of C.boxes) { boxAt(bx, t); if (collideBox(b, BX, BZ, bx.hx, bx.hz, BVX, BVZ)) hit = true; }
+  for (const m of C.mills) {
+    const a = millAng(m, t), c = Math.cos(a) * m.hl, s = Math.sin(a) * m.hl;
+    closest(b.x, b.z, m.x - c, m.z - s, m.x + c, m.z + s);
+    if (resolve(b, CX, CZ, BALL_R + MILL_T / 2, BOX_E, -m.w * (CZ - m.z), m.w * (CX - m.x))) hit = true;
+  }
+  return hit;
+}
+function waterAt(x, z, C) { for (const r of C.water) if (inRect(x, z, r)) return r; return null; }
+function surfaceAt(x, z, C) {
+  if (inAny(x, z, C.water)) return WATER;
+  if (inAny(x, z, C.sand)) return SAND;
+  if (inAny(x, z, C.ice)) return ICE;
+  return C.ground;
+}
+// 推進一個時間步，回傳事件：'hole' | 'stop' | null
+function step(b, t, C) {
+  const surf = surfaceAt(b.x, b.z, C);
+  // 水流：水的阻力是「相對於水流」計算，所以順流會被帶著走、逆流減速更快，停在水裡也會被沖走
+  const wz = surf === WATER ? waterAt(b.x, b.z, C) : null;
+  const fx = wz && wz.flow ? wz.flow[0] : 0, fz = wz && wz.flow ? wz.flow[1] : 0, flowing = !!(fx || fz);
+  let rvx = b.vx - fx, rvz = b.vz - fz, sp = Math.hypot(rvx, rvz);
+  if (sp > 0) {
+    const dec = (surf.a + surf.k * sp) * DT;
+    if (dec >= sp) { rvx = 0; rvz = 0; } else { const f = (sp - dec) / sp; rvx *= f; rvz *= f; }
+  }
+  b.vx = rvx + fx; b.vz = rvz + fz;
+  let steep = flowing;
+  if (C.terrain) {
+    const e = 0.03, gx = (C.h(b.x + e, b.z) - C.h(b.x - e, b.z)) / (2 * e), gz = (C.h(b.x, b.z + e) - C.h(b.x, b.z - e)) / (2 * e);
+    b.vx -= GRAV * gx * DT; b.vz -= GRAV * gz * DT;
+    if (GRAV * Math.hypot(gx, gz) > surf.a) steep = true;
+  }
+  for (const sl of C.slopes) if (inRect(b.x, b.z, sl)) {
+    b.vx += sl.dir[0] * sl.g * DT; b.vz += sl.dir[1] * sl.g * DT;
+    if (sl.g > surf.a) steep = true;
+  }
+  let hx = C.hole[0] - b.x, hz = C.hole[1] - b.z, hd = Math.hypot(hx, hz);
+  if (hd < HOLE_R && hd > 1e-5) { b.vx += hx / hd * HOLE_PULL * DT; b.vz += hz / hd * HOLE_PULL * DT; }
+  b.x += b.vx * DT; b.z += b.vz * DT;
+  const hit = collideStatic(b, C) | collideMoving(b, C, t);
+  hd = Math.hypot(C.hole[0] - b.x, C.hole[1] - b.z);
+  sp = Math.hypot(b.vx, b.vz);
+  if (hd < HOLE_R - BALL_R * 0.25 && sp < HOLE_CAPTURE) return 'hole';
+  // 在陡坡上只有靠著牆才會停下，不然會一直往下滾
+  if (sp < STOP_V && hd >= HOLE_R && (!steep || hit)) { b.vx = 0; b.vz = 0; return 'stop'; }
+  if (flowing && hit && sp < 0.35 && hd >= HOLE_R) { b.vx = 0; b.vz = 0; return 'stop'; }   // 被水流壓在牆邊就算停下
+  return null;
+}
+function simulate(x, z, vx, vz, t0, C) {
+  const b = { x, z, vx, vz };
+  let t = t0;
+  for (let i = 0; i < 15 / DT; i++) {
+    const ev = step(b, t, C); t += DT;
+    if (ev) return { ev, x: b.x, z: b.z };
+  }
+  return { ev: 'stop', x: b.x, z: b.z };
+}
+
+/* ======== 距離場：從洞口往外算「繞過障礙物」的實際距離，給電腦判斷用 ======== */
+function buildField(C) {
+  const xs = C.poly.map(p => p[0]), zs = C.poly.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  const cs = 0.25, W = Math.ceil((maxX - minX) / cs) + 1, H = Math.ceil((maxZ - minZ) / cs) + 1;
+  const free = new Uint8Array(W * H), dist = new Float64Array(W * H).fill(Infinity);
+  const clr = (BALL_R + WALL_T / 2) * 0.9;
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const x = minX + i * cs, z = minZ + j * cs;
+    if (!pointInPoly(x, z, C.poly)) continue;
+    let ok = true;
+    for (const s of C.segs) { closest(x, z, s[0], s[1], s[2], s[3]); if (Math.hypot(x - CX, z - CZ) < clr) { ok = false; break; } }
+    if (ok) for (const c of C.circles) if (Math.hypot(x - c.x, z - c.z) < c.r + BALL_R * 0.9) { ok = false; break; }
+    if (ok) free[j * W + i] = 1;
+  }
+  const heap = [];
+  const push = (d, k) => { heap.push([d, k]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const k = j * W + i, d = Math.hypot(minX + i * cs - C.hole[0], minZ + j * cs - C.hole[1]);
+    if (free[k] && d < 0.4) { dist[k] = d; push(d, k); }
+  }
+  const nb = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]];
+  while (heap.length) {
+    const [d, k] = pop();
+    if (d > dist[k]) continue;
+    const i = k % W, j = (k / W) | 0;
+    for (const [di, dj, w] of nb) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= W || jj >= H) continue;
+      const kk = jj * W + ii;
+      if (!free[kk]) continue;
+      const nd = d + w * cs;
+      if (nd < dist[kk]) { dist[kk] = nd; push(nd, kk); }
+    }
+  }
+  C.field = { minX, minZ, cs, W, H, dist };
+}
+function segCross(ax, az, bx, bz, cx, cz, dx, dz) {
+  const d1 = (dx - cx) * (az - cz) - (dz - cz) * (ax - cx);
+  const d2 = (dx - cx) * (bz - cz) - (dz - cz) * (bx - cx);
+  const d3 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+  const d4 = (bx - ax) * (dz - az) - (bz - az) * (dx - ax);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+// 查距離場時，只採用跟球之間沒有牆擋住的格子，避免「隔牆」誤判
+function fieldAt(C, x, z) {
+  const f = C.field, i0 = Math.round((x - f.minX) / f.cs), j0 = Math.round((z - f.minZ) / f.cs);
+  let best = Infinity;
+  for (let dj = -3; dj <= 3; dj++) for (let di = -3; di <= 3; di++) {
+    const i = i0 + di, j = j0 + dj;
+    if (i < 0 || j < 0 || i >= f.W || j >= f.H) continue;
+    const d = f.dist[j * f.W + i];
+    if (d === Infinity) continue;
+    const cx = f.minX + i * f.cs, cz = f.minZ + j * f.cs;
+    let blocked = false;
+    for (const s of C.segs) if (segCross(x, z, cx, cz, s[0], s[1], s[2], s[3])) { blocked = true; break; }
+    if (!blocked) best = Math.min(best, d + Math.hypot(cx - x, cz - z));
+  }
+  return best === Infinity ? 99 : best;
+}
+
+/* ================= Three.js 場景 ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+$('stage').appendChild(renderer.domElement);
+const canvas = renderer.domElement;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 400);
+const SKY = {
+  grass: { top: 0x3f8fdc, mid: 0x9fd0f2, bot: 0xd6e8f0 },
+  ice:   { top: 0x3c74b4, mid: 0x98bfdc, bot: 0xc4d6e2 },
+};
+scene.fog = new THREE.Fog(SKY.grass.bot, 70, 200);
+const hemi = new THREE.HemisphereLight(0xe2f2ff, 0x4f6b35, 0.45);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff1dc, 0.95);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 80 });
+sun.shadow.bias = -0.0005;
+scene.add(sun, sun.target);
+
+// 天空：漸層加上會飄的雲
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color(SKY.grass.top) }, mid: { value: new THREE.Color(SKY.grass.mid) }, bot: { value: new THREE.Color(SKY.grass.bot) }, time: { value: 0 } },
+  vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform vec3 top; uniform vec3 mid; uniform vec3 bot; uniform float time; varying vec3 vDir;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y); }
+    float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+    void main(){
+      vec3 d = normalize(vDir); float h = d.y;
+      vec3 c = mix(mid, top, pow(clamp(h, 0.0, 1.0), 0.6));
+      c = mix(bot, c, smoothstep(-0.02, 0.15, h));
+      if (h > 0.0) {
+        vec2 uv = d.xz / (h + 0.12) * 0.9 + vec2(time * 0.012, time * 0.004);
+        float cl = smoothstep(0.52, 0.8, fbm(uv)) * smoothstep(0.0, 0.25, h);
+        c = mix(c, vec3(1.0), cl * 0.85);
+      }
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), skyMat);
+sky.frustumCulled = false; sky.renderOrder = -1;
+scene.add(sky);
+
+// 環境反射：用天空和草地顏色產生一張反射圖，球、水、金屬才會有光澤
+function buildEnv() {
+  // 這裡不用雲的 shader（在反射圖的產生過程中會壞掉），改用頂點顏色做的漸層球
+  const es = new THREE.Scene();
+  const sg = new THREE.SphereGeometry(50, 32, 16), pa = sg.attributes.position, cols = [];
+  const cTop = new THREE.Color(SKY.grass.top), cMid = new THREE.Color(SKY.grass.mid), cBot = new THREE.Color(SKY.grass.bot), c = new THREE.Color();
+  for (let i = 0; i < pa.count; i++) {
+    const h = pa.getY(i) / 50;
+    if (h > 0) c.copy(cMid).lerp(cTop, Math.pow(h, 0.6)); else c.copy(cBot);
+    cols.push(c.r, c.g, c.b);
+  }
+  sg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  es.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const gd = new THREE.Mesh(new THREE.CircleGeometry(49, 32), new THREE.MeshBasicMaterial({ color: 0x55743f, side: THREE.DoubleSide }));
+  gd.rotation.x = -Math.PI / 2; gd.position.y = -2; es.add(gd);
+  const pm = new THREE.PMREMGenerator(renderer);
+  const tex = pm.fromScene(es, 0.03).texture;
+  pm.dispose();
+  return tex;
+}
+scene.environment = buildEnv();
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshStandardMaterial({ roughness: 1 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = -1; floor.receiveShadow = true;
+scene.add(floor);
+
+/* ---------- 程式產生的貼圖 ---------- */
+const MAXANISO = renderer.capabilities.getMaxAnisotropy();
+function canvasTex(w, h, draw, rx = 1, ry = 1) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  draw(cv.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.anisotropy = MAXANISO;
+  return t;
+}
+const R0 = seeded(20261016);
+const rr = (a, b) => a + R0() * (b - a);
+function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
+function speckle(g, w, h, n, colorFn, rmin, rmax) {
+  for (let i = 0; i < n; i++) { g.fillStyle = colorFn(); g.beginPath(); g.arc(rr(0, w), rr(0, h), rr(rmin, rmax), 0, 7); g.fill(); }
+}
+// 讓貼圖邊緣能無縫重複：同一組圖案在四周各畫一次（圖案要先產生好再畫）
+function wrapDraw(g, w, h, fn) { for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { g.save(); g.translate(ox, oy); fn(); g.restore(); } }
+
+// 草地：修剪條紋＋草葉＋雜點，一張貼圖約 4 格
+function grassDraw(g, w, h, bump, field) {
+  g.fillStyle = bump ? '#808080' : field ? '#3c6f31' : '#4b9139'; g.fillRect(0, 0, w, h);
+  if (!bump && !field) { g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(0, 0, w, h / 2); }
+  const rnd = seeded(7);
+  for (let i = 0; i < 14000; i++) {
+    const x = rnd() * w, y = rnd() * h, a = rnd() * Math.PI * 2, L = 2 + rnd() * 5;
+    g.strokeStyle = bump ? (rnd() < 0.5 ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)')
+                         : field ? hsl(80 + rnd() * 25, 30 + rnd() * 15, 18 + rnd() * 16, 0.6) : hsl(95 + rnd() * 20, 40 + rnd() * 15, 24 + rnd() * 18, 0.55);
+    g.lineWidth = 1 + rnd();
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke();
+  }
+}
+const grassMap = canvasTex(512, 512, (g, w, h) => grassDraw(g, w, h, false), 0.25, 0.25);
+const grassBump = canvasTex(512, 512, (g, w, h) => grassDraw(g, w, h, true), 0.25, 0.25);
+
+// 冰面：偏深藍、霧面，不會一片白
+const iceMap = canvasTex(512, 512, (g, w, h) => {
+  g.fillStyle = '#6aa8d2'; g.fillRect(0, 0, w, h);
+  const rnd = seeded(11), blobs = [], bubbles = [], cracks = [];
+  for (let i = 0; i < 30; i++) blobs.push([rnd() * w, rnd() * h, 30 + rnd() * 80, rnd() < 0.5]);
+  for (let i = 0; i < 60; i++) bubbles.push([rnd() * w, rnd() * h, 1 + rnd() * 2.5]);
+  for (let i = 0; i < 20; i++) {
+    let x = rnd() * w, y = rnd() * h, a = rnd() * 6.28; const pts = [[x, y]];
+    for (let k = 0; k < 6; k++) { a += (rnd() - 0.5) * 1.2; x += Math.cos(a) * (8 + rnd() * 22); y += Math.sin(a) * (8 + rnd() * 22); pts.push([x, y]); }
+    cracks.push([pts, rnd() < 0.55, 1 + rnd() * 1.4]);
+  }
+  wrapDraw(g, w, h, () => {
+    for (const [x, y, r, light] of blobs) {
+      const rg = g.createRadialGradient(x, y, 0, x, y, r);
+      rg.addColorStop(0, light ? 'rgba(210,235,250,0.28)' : 'rgba(30,80,130,0.22)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    g.strokeStyle = 'rgba(230,245,255,0.45)'; g.lineWidth = 1;
+    for (const [x, y, r] of bubbles) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
+    for (const [pts, light, lw] of cracks) {
+      g.strokeStyle = light ? 'rgba(225,242,255,0.75)' : 'rgba(25,70,115,0.5)'; g.lineWidth = lw;
+      g.beginPath(); pts.forEach(([x, y], k) => k ? g.lineTo(x, y) : g.moveTo(x, y)); g.stroke();
+    }
+  });
+}, 1 / 6, 1 / 6);
+const snowMap = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#c6d6e0'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 1800, () => R0() < 0.5 ? 'rgba(240,248,252,0.6)' : 'rgba(110,140,165,0.2)', 0.5, 2);
+}, 40, 40);
+const fieldMap = canvasTex(256, 256, (g, w, h) => grassDraw(g, w, h, false, true), 60, 60);
+
+// 沙子：細顆粒＋耙紋
+function sandDraw(g, w, h, bump) {
+  g.fillStyle = bump ? '#808080' : '#e4cf98'; g.fillRect(0, 0, w, h);
+  const rnd = seeded(5);
+  g.lineWidth = 2;
+  for (let y = 6; y < h; y += 14) {
+    g.strokeStyle = bump ? 'rgba(0,0,0,0.35)' : 'rgba(150,115,60,0.18)';
+    g.beginPath(); for (let x = 0; x <= w; x += 8) g.lineTo(x, y + Math.sin(x / w * Math.PI * 4) * 4); g.stroke();
+  }
+  for (let i = 0; i < 6000; i++) {
+    g.fillStyle = bump ? (rnd() < 0.5 ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)') : hsl(38 + rnd() * 10, 40 + rnd() * 25, 55 + rnd() * 30, 0.6);
+    g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
+  }
+}
+const sandMap = canvasTex(256, 256, (g, w, h) => sandDraw(g, w, h, false), 0.5, 0.5);
+const sandBump = canvasTex(256, 256, (g, w, h) => sandDraw(g, w, h, true), 0.5, 0.5);
+
+// 水面：沿著水流方向的波紋和箭頭形水紋（貼圖會往水流方向移動）
+function waterTex(flow) {
+  const moving = Math.hypot(flow[0], flow[1]) > 0.01, ang = Math.atan2(flow[1], flow[0]);
+  const rnd = seeded(31), blobs = [], streaks = [], chevs = [];
+  for (let i = 0; i < 14; i++) blobs.push([rnd() * 256, rnd() * 256, 30 + rnd() * 50]);
+  for (let i = 0; i < 70; i++) streaks.push([rnd() * 256, rnd() * 256, 12 + rnd() * 34, 0.1 + rnd() * 0.25, 1 + rnd() * 1.5, moving ? ang + (rnd() - 0.5) * 0.3 : rnd() * 6.28]);
+  if (moving) for (let i = 0; i < 4; i++) chevs.push([(i % 2) * 128 + 64 + (i > 1 ? 40 : 0), (i >> 1) * 128 + 64]);
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = '#2483c4'; g.fillRect(0, 0, w, h);
+    wrapDraw(g, w, h, () => {
+      for (const [x, y, r] of blobs) {
+        const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, 'rgba(10,60,110,0.3)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2);
+      }
+      for (const [x, y, L, a, lw, an] of streaks) {
+        g.save(); g.translate(x, y); g.rotate(an);
+        g.strokeStyle = `rgba(255,255,255,${a})`; g.lineWidth = lw; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(-L / 2, 0); g.quadraticCurveTo(0, -3, L / 2, 0); g.stroke(); g.restore();
+      }
+      for (const [x, y] of chevs) {
+        g.save(); g.translate(x, y); g.rotate(ang);
+        g.strokeStyle = 'rgba(255,255,255,0.28)'; g.lineWidth = 6; g.lineCap = 'round'; g.lineJoin = 'round';
+        g.beginPath(); g.moveTo(-12, -18); g.lineTo(10, 0); g.lineTo(-12, 18); g.stroke(); g.restore();
+      }
+    });
+  }, 0.4, 0.4);
+}
+// 浪花：水池邊緣一圈白色泡沫，下游那一側比較多
+function foamTex(r, flow) {
+  const cw = clamp(Math.round(r.w * 40), 64, 512), ch = clamp(Math.round(r.d * 40), 64, 512);
+  const fl = Math.hypot(flow[0], flow[1]), fdx = fl ? flow[0] / fl : 0, fdz = fl ? flow[1] / fl : 0;
+  const rnd = seeded(Math.abs(Math.floor(r.x * 97 + r.z * 13)) + 7);
+  const t = canvasTex(cw, ch, (g, w, h) => {
+    const px = w / r.w;
+    const edges = [[0, 0, 1, 0, 0, -1], [1, 0, 1, 1, 1, 0], [1, 1, 0, 1, 0, 1], [0, 1, 0, 0, -1, 0]];
+    for (const [ax, ay, bx, by, nx, ny] of edges) {
+      const len = Math.hypot((bx - ax) * w, (by - ay) * h), down = Math.max(0, nx * fdx + ny * fdz);
+      const n = Math.ceil(len / 1.4 * (1 + down * 1.5));
+      for (let i = 0; i < n; i++) {
+        const k = rnd(), x = (ax + (bx - ax) * k) * w, y = (ay + (by - ay) * k) * h;
+        const depth = (0.08 + rnd() * 0.18 + down * rnd() * 0.55) * px;
+        const d = Math.pow(rnd(), 1.6) * depth;
+        g.fillStyle = `rgba(255,255,255,${(0.35 + rnd() * 0.5) * (1 - d / (depth + 1) * 0.6)})`;
+        g.beginPath(); g.arc(x - nx * d, y - ny * d, (0.03 + rnd() * 0.06 + down * rnd() * 0.05) * px, 0, 7); g.fill();
+      }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  return t;
+}
+const dotMap = canvasTex(32, 32, (g) => {
+  const rg = g.createRadialGradient(16, 16, 0, 16, 16, 16); rg.addColorStop(0, 'rgba(255,255,255,1)'); rg.addColorStop(0.5, 'rgba(255,255,255,0.6)'); rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 32, 32);
+});
+
+// 木頭：木紋＋板縫（貼圖寬度對應 2 格）
+const woodMap = canvasTex(512, 128, (g, w, h) => {
+  g.fillStyle = '#a9713c'; g.fillRect(0, 0, w, h);
+  const rnd = seeded(9);
+  for (let i = 0; i < 70; i++) {
+    const y = rnd() * h, amp = 1 + rnd() * 3, f = 1 + rnd() * 4, ph = rnd() * 6;
+    g.strokeStyle = rnd() < 0.6 ? `rgba(80,45,15,${0.12 + rnd() * 0.2})` : `rgba(230,180,120,${0.1 + rnd() * 0.15})`;
+    g.lineWidth = 0.6 + rnd() * 1.6;
+    g.beginPath(); for (let x = 0; x <= w; x += 6) g.lineTo(x, y + Math.sin(x / w * Math.PI * 2 * f + ph) * amp); g.stroke();
+  }
+  for (let i = 0; i < 4; i++) { g.fillStyle = 'rgba(60,32,10,0.55)'; g.fillRect(i * 128, 0, 2, h); }
+  for (let i = 0; i < 5; i++) { const x = rnd() * w, y = rnd() * h; g.fillStyle = 'rgba(70,38,12,0.45)'; g.beginPath(); g.ellipse(x, y, 6 + rnd() * 5, 2.5 + rnd() * 2, 0, 0, 7); g.fill(); }
+});
+const woodLight = canvasTex(256, 64, (g, w, h) => {
+  g.fillStyle = '#c99358'; g.fillRect(0, 0, w, h);
+  const rnd = seeded(19);
+  for (let i = 0; i < 30; i++) { g.strokeStyle = `rgba(110,65,25,${0.1 + rnd() * 0.2})`; g.lineWidth = 1; const y = rnd() * h; g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(w / 3, y + rnd() * 6 - 3, w * 2 / 3, y + rnd() * 6 - 3, w, y); g.stroke(); }
+});
+
+// 岩石、泥土
+const rockMap = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#8f939a'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 2600, () => hsl(210, 6 + R0() * 8, 35 + R0() * 40, 0.45), 0.6, 3);
+  for (let i = 0; i < 25; i++) { g.strokeStyle = 'rgba(40,40,45,0.35)'; g.lineWidth = 1; g.beginPath(); let x = rr(0, w), y = rr(0, h); g.moveTo(x, y); for (let k = 0; k < 4; k++) { x += rr(-25, 25); y += rr(-25, 25); g.lineTo(x, y); } g.stroke(); }
+});
+const dirtMap = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#7d5232'; g.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 18) { g.fillStyle = `rgba(${R0() < 0.5 ? '40,22,10' : '160,110,70'},${0.15 + R0() * 0.15})`; g.fillRect(0, y, w, 4 + R0() * 6); }
+  speckle(g, w, h, 1500, () => hsl(25, 30 + R0() * 20, 20 + R0() * 30, 0.5), 0.5, 2.5);
+}, 0.5, 0.5);
+
+// 警示條紋（移動方塊）、風車條紋
+function stripeTex(c1, c2, n) {
+  return canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = c1; g.fillRect(0, 0, w, h);
+    g.fillStyle = c2;
+    for (let i = -n; i < n * 2; i++) { g.beginPath(); const x = i * w / n; g.moveTo(x, 0); g.lineTo(x + w / n / 2, 0); g.lineTo(x + w / n / 2 + h, h); g.lineTo(x + h, h); g.fill(); }
+    g.fillStyle = 'rgba(0,0,0,0.08)'; for (let i = 0; i < 400; i++) g.fillRect(rr(0, w), rr(0, h), 1, 1);
+  });
+}
+const hazardMap = stripeTex('#ec7a35', '#fbeee0', 4);
+const millMap = stripeTex('#6f55cf', '#ece8fb', 3);
+
+// 球洞內壁：上緣一圈白色襯套，往下越來越暗
+const cupWallMap = canvasTex(16, 128, (g, w, h) => {
+  g.fillStyle = '#f0f0f0'; g.fillRect(0, 0, w, 14);
+  g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, 14, w, 2);
+  const gr = g.createLinearGradient(0, 16, 0, h); gr.addColorStop(0, '#4c4c4c'); gr.addColorStop(1, '#060606');
+  g.fillStyle = gr; g.fillRect(0, 16, w, h - 16);
+});
+// 牆腳和石頭底下的陰影
+const shadeMap = canvasTex(4, 64, (g, w, h) => {
+  const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, 'rgba(0,0,0,0.42)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+shadeMap.wrapS = shadeMap.wrapT = THREE.ClampToEdgeWrapping;
+const blobMap = canvasTex(64, 64, (g) => {
+  const rg = g.createRadialGradient(32, 32, 8, 32, 32, 32); rg.addColorStop(0, 'rgba(0,0,0,0.45)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = rg; g.fillRect(0, 0, 64, 64);
+});
+blobMap.wrapS = blobMap.wrapT = THREE.ClampToEdgeWrapping;
+
+const dimpleBump = canvasTex(256, 128, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#555';
+  for (let y = 6; y < h; y += 10) for (let x = (y / 10 % 2) * 5; x < w; x += 10) { g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); }
+});
+
+/* ---------- 材質 ---------- */
+// 球洞範圍用 stencil 挖掉：地面類的材質在洞口範圍內不畫，才看得到洞裡面
+function cutByHole(m) {
+  m.stencilWrite = true; m.stencilRef = 1; m.stencilFunc = THREE.NotEqualStencilFunc;
+  m.stencilFail = m.stencilZFail = m.stencilZPass = THREE.KeepStencilOp;
+  return m;
+}
+const grassMat = cutByHole(new THREE.MeshStandardMaterial({ map: grassMap, bumpMap: grassBump, bumpScale: 0.025, roughness: 0.95, envMapIntensity: 0.3 }));
+const iceMat = cutByHole(new THREE.MeshStandardMaterial({ map: iceMap, roughness: 0.38, metalness: 0, envMapIntensity: 0.55 }));
+const dirtMat = new THREE.MeshStandardMaterial({ map: dirtMap, roughness: 1, side: THREE.DoubleSide, envMapIntensity: 0.4 });
+const woodMat = new THREE.MeshStandardMaterial({ map: woodMap, bumpMap: woodMap, bumpScale: 0.012, roughness: 0.75, envMapIntensity: 0.45 });
+const trimMat = new THREE.MeshStandardMaterial({ map: woodLight, roughness: 0.6, envMapIntensity: 0.5 });
+const rockMat = new THREE.MeshStandardMaterial({ map: rockMap, bumpMap: rockMap, bumpScale: 0.03, roughness: 0.9, flatShading: true, envMapIntensity: 0.45 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0xc9cfd6, roughness: 0.3, metalness: 0.75 });
+const blockMat = new THREE.MeshStandardMaterial({ map: hazardMap, roughness: 0.5, envMapIntensity: 0.6 });
+const millMat = new THREE.MeshStandardMaterial({ map: millMap, roughness: 0.4, metalness: 0.15, envMapIntensity: 0.6 });
+const sandMat = cutByHole(new THREE.MeshStandardMaterial({ map: sandMap, bumpMap: sandBump, bumpScale: 0.02, roughness: 1, envMapIntensity: 0.45 }));
+const iceZoneMat = cutByHole(new THREE.MeshStandardMaterial({ map: iceMap, roughness: 0.32, transparent: true, opacity: 0.95, envMapIntensity: 0.55 }));
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6e4a2c, roughness: 1, envMapIntensity: 0.4 });
+const leafMats = [0x2f7d34, 0x3c9140, 0x4a9e3c].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, flatShading: true, envMapIntensity: 0.4 }));
+const snowLeafMats = [0xc4d8e4, 0xd6e4ec, 0xb4cbd9].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true, envMapIntensity: 0.4 }));
+const floorMat = floor.material;
+floorMat.envMapIntensity = 0.35;
+const teeMats = { grass: cutByHole(new THREE.MeshStandardMaterial({ color: 0x3f9636, roughness: 0.9, envMapIntensity: 0.45 })), ice: cutByHole(new THREE.MeshStandardMaterial({ color: 0x8fbfdc, roughness: 0.6, envMapIntensity: 0.5 })) };
+const shadeMat = cutByHole(new THREE.MeshBasicMaterial({ map: shadeMap, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+const blobMat = cutByHole(new THREE.MeshBasicMaterial({ map: blobMap, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+const fleckMat = new THREE.PointsMaterial({ map: dotMap, size: 0.14, transparent: true, depthWrite: false, opacity: 0.85, color: 0xffffff });
+const cupMaskMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1, stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp });
+const cupInMat = new THREE.MeshBasicMaterial({ map: cupWallMap, side: THREE.BackSide, stencilWrite: true, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc });
+const cupBotMat = new THREE.MeshBasicMaterial({ color: 0x050505, stencilWrite: true, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc });
+
+// 不規則石頭
+function rockGeo(r, h, seed) {
+  const geo = new THREE.IcosahedronGeometry(r, 1), p = geo.attributes.position, rnd = seeded(seed);
+  const map = new Map();
+  for (let i = 0; i < p.count; i++) {
+    const key = p.getX(i).toFixed(3) + ',' + p.getY(i).toFixed(3) + ',' + p.getZ(i).toFixed(3);
+    if (!map.has(key)) map.set(key, 0.85 + rnd() * 0.25);
+    const f = map.get(key);
+    p.setXYZ(i, p.getX(i) * f, Math.max(p.getY(i) * f * (h / r), -0.05), p.getZ(i) * f);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+// 依長度放大 UV，讓木紋不會被拉長
+function scaleUV(geo, su) { const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * su); return geo; }
+
+function disposeGroup(g) {
+  g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && !Array.isArray(o.material) && o.material.userData.own) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
+}
+
+// 依地形高度鋪一塊多邊形網格（地面、沙坑、水坑都用這個，才會貼著起伏）；uvFn 可以自訂貼圖座標
+function drapeGeo(poly, H, res, off, uvFn) {
+  const xs = poly.map(p => p[0]), zs = poly.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+  const nx = Math.max(1, Math.ceil((x1 - x0) / res)), nz = Math.max(1, Math.ceil((z1 - z0) / res));
+  const dx = (x1 - x0) / nx, dz = (z1 - z0) / nz;
+  const id = (i, j) => j * (nx + 1) + i;
+  const used = new Map(), pos = [], uv = [], idx = [];
+  const vert = (i, j) => {
+    const k = id(i, j);
+    if (used.has(k)) return used.get(k);
+    let x = x0 + i * dx, z = z0 + j * dz;
+    if (!pointInPoly(x, z, poly)) {      // 外面的點貼回邊界，邊緣才會乾淨
+      let best = Infinity, bx = x, bz = z;
+      for (let e = 0; e < poly.length; e++) {
+        const p = poly[e], q = poly[(e + 1) % poly.length];
+        closest(x, z, p[0], p[1], q[0], q[1]);
+        const d = (CX - x) ** 2 + (CZ - z) ** 2;
+        if (d < best) { best = d; bx = CX; bz = CZ; }
+      }
+      x = bx; z = bz;
+    }
+    const n = pos.length / 3;
+    pos.push(x, H(x, z) + off, z);
+    if (uvFn) uv.push(...uvFn(x, z)); else uv.push(x, -z);
+    used.set(k, n);
+    return n;
+  };
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const cx = x0 + (i + 0.5) * dx, cz = z0 + (j + 0.5) * dz;
+    const tri = (a, b, c, px, pz) => { if (pointInPoly(px, pz, poly)) idx.push(vert(...a), vert(...b), vert(...c)); };
+    tri([i, j], [i, j + 1], [i + 1, j], cx - dx / 6, cz - dz / 6);
+    tri([i + 1, j], [i, j + 1], [i + 1, j + 1], cx + dx / 6, cz + dz / 6);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+function roundPoly(cx, cz, w, d, r, ang = 0) {
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  const pts = [], R = Math.min(r, w / 2, d / 2), corners = [[w / 2 - R, d / 2 - R, 0], [-w / 2 + R, d / 2 - R, 1], [-w / 2 + R, -d / 2 + R, 2], [w / 2 - R, -d / 2 + R, 3]];
+  for (const [ox, oz, q] of corners) for (let k = 0; k <= 5; k++) {
+    const t = (q + k / 5) * Math.PI / 2, px = ox + Math.cos(t) * R, pz = oz + Math.sin(t) * R;
+    pts.push([cx + px * ca - pz * sa, cz + px * sa + pz * ca]);
+  }
+  return pts;
+}
+function circlePoly(cx, cz, r, n = 32) { const p = []; for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2; p.push([cx + Math.cos(t) * r, cz + Math.sin(t) * r]); } return p; }
+const blobUV = (cx, cz, R) => (x, z) => [(x - cx) / (2 * R) + 0.5, (z - cz) / (2 * R) + 0.5];
+
+let C = null, courseGroup = null, flag = null, flagBase = null;
+function buildCourse(def) {
+  if (courseGroup) { scene.remove(courseGroup); disposeGroup(courseGroup); }
+  const g = new THREE.Group();
+  const CC = makeC(def), H = CC.h;
+  const P = def.poly, segs = CC.segs, icy = def.theme === 'ice';
+  const sk = icy ? SKY.ice : SKY.grass;
+  skyMat.uniforms.top.value.set(sk.top); skyMat.uniforms.mid.value.set(sk.mid); skyMat.uniforms.bot.value.set(sk.bot);
+  scene.fog.color.set(sk.bot);
+  floorMat.map = icy ? snowMap : fieldMap; floorMat.needsUpdate = true;
+  const xs = P.map(p => p[0]), zs = P.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  let minH = 0;
+  for (let x = minX; x <= maxX; x += 0.5) for (let z = minZ; z <= maxZ; z += 0.5) minH = Math.min(minH, H(x, z));
+  const floorY = minH - 1;
+  floor.position.y = floorY;
+  const add = (m, order = 0) => { m.renderOrder = order; g.add(m); return m; };
+
+  // 地面
+  const ground = add(new THREE.Mesh(drapeGeo(P, H, CC.terrain ? 0.25 : 1, 0), icy ? iceMat : grassMat), 2);
+  ground.receiveShadow = true;
+  // 土台側面
+  const sp = [], su = [];
+  let along = 0;
+  for (let e = 0; e < P.length; e++) {
+    const p = P[e], q = P[(e + 1) % P.length], L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(1, Math.ceil(L / 0.5));
+    for (let k = 0; k < n; k++) {
+      const ax = p[0] + (q[0] - p[0]) * k / n, az = p[1] + (q[1] - p[1]) * k / n, bx = p[0] + (q[0] - p[0]) * (k + 1) / n, bz = p[1] + (q[1] - p[1]) * (k + 1) / n;
+      const ha = H(ax, az), hb = H(bx, bz), u0 = along, u1 = along + L / n;
+      sp.push(ax, ha, az, bx, hb, bz, ax, floorY, az, bx, hb, bz, bx, floorY, bz, ax, floorY, az);
+      su.push(u0, ha, u1, hb, u0, floorY, u1, hb, u1, floorY, u0, floorY);
+      along = u1;
+    }
+  }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  sg.setAttribute('uv', new THREE.Float32BufferAttribute(su, 2));
+  sg.computeVertexNormals();
+  add(new THREE.Mesh(sg, dirtMat)).receiveShadow = true;
+
+  // 圍牆：沿著地形分段，每段跟著坡度傾斜
+  for (const s of segs) {
+    let dx = s[2] - s[0], dz = s[3] - s[1];
+    const L = Math.hypot(dx, dz); dx /= L; dz /= L;
+    const ax = s[0] - dx * WALL_T / 2, az = s[1] - dz * WALL_T / 2, LL = L + WALL_T;
+    const n = CC.terrain ? Math.max(1, Math.ceil(LL / 1)) : 1, ang = Math.atan2(-dz, dx);
+    for (let k = 0; k < n; k++) {
+      const pa = [ax + dx * LL * k / n, az + dz * LL * k / n], pb = [ax + dx * LL * (k + 1) / n, az + dz * LL * (k + 1) / n];
+      const ha = H(pa[0], pa[1]), hb = H(pb[0], pb[1]), len = LL / n, pitch = Math.atan2(hb - ha, len);
+      const cx = (pa[0] + pb[0]) / 2, cz = (pa[1] + pb[1]) / 2, cy = (ha + hb) / 2;
+      const qt = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ang, pitch, 'YXZ'));
+      const plen = Math.hypot(len, hb - ha) + (n > 1 ? 0.04 : 0);
+      const m = new THREE.Mesh(scaleUV(new THREE.BoxGeometry(plen, WALL_H + 0.5, WALL_T), plen / 2), woodMat);
+      m.position.set(cx, cy + (WALL_H - 0.5) / 2, cz); m.quaternion.copy(qt);
+      m.castShadow = m.receiveShadow = true; g.add(m);
+      const t = new THREE.Mesh(scaleUV(new THREE.BoxGeometry(plen + 0.04, 0.06, WALL_T + 0.08), plen / 2), trimMat);
+      t.position.set(cx, cy + WALL_H + 0.03, cz); t.quaternion.copy(qt); t.castShadow = true; g.add(t);
+    }
+  }
+  // 牆腳陰影：讓牆和地面接起來，不會看起來浮在草上
+  const shP = [], shU = [];
+  for (const s of segs) {
+    let dx = s[2] - s[0], dz = s[3] - s[1]; const L = Math.hypot(dx, dz); dx /= L; dz /= L;
+    for (const sd of [1, -1]) {
+      const nx = -dz * sd, nz = dx * sd;
+      if (!pointInPoly((s[0] + s[2]) / 2 + nx * 0.5, (s[1] + s[3]) / 2 + nz * 0.5, P)) continue;
+      const n = Math.max(1, Math.ceil(L / 0.5));
+      const pt = (t, r) => { const x = s[0] + (s[2] - s[0]) * t + nx * r, z = s[1] + (s[3] - s[1]) * t + nz * r; return [x, H(x, z) + 0.012, z]; };
+      for (let k = 0; k < n; k++) {
+        const a0 = pt(k / n, WALL_T / 2), a1 = pt((k + 1) / n, WALL_T / 2), b0 = pt(k / n, WALL_T / 2 + 0.6), b1 = pt((k + 1) / n, WALL_T / 2 + 0.6);
+        shP.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1);
+        shU.push(0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1);
+      }
+    }
+  }
+  const shG = new THREE.BufferGeometry();
+  shG.setAttribute('position', new THREE.Float32BufferAttribute(shP, 3));
+  shG.setAttribute('uv', new THREE.Float32BufferAttribute(shU, 2));
+  add(new THREE.Mesh(shG, shadeMat), 2);
+  const blob = (x, z, R) => add(new THREE.Mesh(drapeGeo(circlePoly(x, z, R, 24), H, 0.25, 0.013, blobUV(x, z, R)), blobMat), 2);
+
+  // 石頭
+  (def.circles || []).forEach((c, i) => {
+    let y = Infinity; for (let k = 0; k < 8; k++) y = Math.min(y, H(c.x + Math.cos(k) * c.r, c.z + Math.sin(k) * c.r));
+    const m = new THREE.Mesh(rockGeo(c.r * 1.05, 0.55, i * 31 + c.x * 7 + 3), rockMat);
+    m.position.set(c.x, Math.min(y, H(c.x, c.z)), c.z); m.rotation.y = i * 1.7; m.castShadow = m.receiveShadow = true; g.add(m);
+    blob(c.x, c.z, c.r + 0.45);
+  });
+  // 方塊（可移動）
+  for (const b of CC.boxes) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(b.hx * 2, 0.6, b.hz * 2), blockMat);
+    m.position.set(b.x, H(b.x, b.z) + 0.25, b.z); m.castShadow = m.receiveShadow = true; g.add(m);
+    b.mesh = m;
+  }
+  // 風車
+  CC.millMeshes = CC.mills.map(mm => {
+    const y0 = H(mm.x, mm.z);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(HUB_R * 0.9, HUB_R, 1.1, 20), metalMat);
+    hub.position.set(mm.x, y0 + 0.35, mm.z); hub.castShadow = true; g.add(hub);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(HUB_R * 0.95, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), metalMat);
+    cap.position.set(mm.x, y0 + 0.9, mm.z); g.add(cap);
+    const bar = new THREE.Mesh(scaleUV(new THREE.BoxGeometry(mm.hl * 2, 0.3, MILL_T), mm.hl), millMat);
+    bar.position.set(mm.x, y0 + 0.3, mm.z); bar.castShadow = true; g.add(bar);
+    blob(mm.x, mm.z, HUB_R + 0.5);
+    return bar;
+  });
+  // 地形區塊（圓角、貼著地面）
+  const zone = (r, mat, off, grow = 0, uvFn) => {
+    const m = add(new THREE.Mesh(drapeGeo(roundPoly(r.x, r.z, r.w + grow, r.d + grow, 0.5 + grow / 2), H, 0.25, off, uvFn), mat), 2);
+    m.receiveShadow = true;
+    return m;
+  };
+  CC.ice.forEach(r => zone(r, iceZoneMat, 0.012));
+  CC.sand.forEach(r => zone(r, sandMat, 0.014));
+  // 水池：流動的水面、浪花、漂浮的白點
+  CC.waterFx = [];
+  CC.water.forEach(r => {
+    zone(r, sandMat, 0.013, 0.24);
+    const flow = r.flow || [0, 0];
+    const tex = waterTex(flow);
+    const wm = cutByHole(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.9, envMapIntensity: 1.1 }));
+    wm.userData.own = true;
+    zone(r, wm, 0.02);
+    const x0 = r.x - r.w / 2, z0 = r.z - r.d / 2;
+    const fm = cutByHole(new THREE.MeshBasicMaterial({ map: foamTex(r, flow), transparent: true, depthWrite: false }));
+    fm.userData.own = true;
+    zone(r, fm, 0.026, 0, (x, z) => [(x - x0) / r.w, 1 - (z - z0) / r.d]);
+    const n = Math.round(r.w * r.d * 1.4), pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { const x = x0 + 0.2 + Math.random() * (r.w - 0.4), z = z0 + 0.2 + Math.random() * (r.d - 0.4); pos.set([x, H(x, z) + 0.035, z], i * 3); }
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = add(new THREE.Points(pg, fleckMat), 3); pts.frustumCulled = false;
+    CC.waterFx.push({ r, flow, tex, fm, pos, pg, seed: Math.random() * 10 });
+  });
+
+  // 球洞：用 stencil 在地面挖一個洞，裡面有內壁、白色襯套和洞底
+  const [hx, hz] = def.hole, hy = H(hx, hz);
+  add(new THREE.Mesh(drapeGeo(circlePoly(hx, hz, HOLE_R, 40), H, 0.06, 0.004), cupMaskMat), 1);
+  const CUP_D = 0.55;
+  const wall = add(new THREE.Mesh(new THREE.CylinderGeometry(HOLE_R, HOLE_R, CUP_D, 40, 1, true), cupInMat), 3);
+  wall.position.set(hx, hy - CUP_D / 2 + 0.05, hz);
+  const bottom = add(new THREE.Mesh(new THREE.CircleGeometry(HOLE_R, 40), cupBotMat), 3);
+  bottom.rotation.x = -Math.PI / 2; bottom.position.set(hx, hy - CUP_D + 0.05, hz);
+  CC.cupBottom = hy - CUP_D + 0.05;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(HOLE_R + 0.015, 0.02, 6, 40), new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.35 }));
+  rim.material.userData.own = true;
+  rim.rotation.x = Math.PI / 2; rim.position.set(hx, hy + 0.008, hz); g.add(rim);
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.25, metalness: 0.5 }); poleMat.userData.own = true;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.2 + CUP_D, 10), poleMat);
+  pole.position.set(hx, hy + 1.1 - CUP_D / 2, hz); pole.castShadow = true; g.add(pole);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), metalMat);
+  knob.position.set(hx, hy + 2.22, hz); g.add(knob);
+  const fg = new THREE.PlaneGeometry(0.95, 0.56, 12, 4); fg.translate(0.475, -0.28, 0);
+  flagBase = fg.attributes.position.array.slice();
+  const flagMat = new THREE.MeshStandardMaterial({ color: 0xe23b3b, side: THREE.DoubleSide, roughness: 0.8 }); flagMat.userData.own = true;
+  flag = new THREE.Mesh(fg, flagMat);
+  flag.position.set(hx, hy + 2.18, hz); flag.castShadow = true; g.add(flag);
+
+  // 發球台
+  const teeAng = Math.atan2(hz - def.tee[1], hx - def.tee[0]) + Math.PI / 2;
+  add(new THREE.Mesh(drapeGeo(roundPoly(def.tee[0], def.tee[1], 2.6, 0.9, 0.3, teeAng), H, 0.2, 0.01), icy ? teeMats.ice : teeMats.grass), 2);
+
+  // 周圍的樹、灌木、石頭（裝飾）
+  let seed = 13; for (const ch of def.name) seed = (seed * 31 + ch.charCodeAt(0)) % 2147483646;
+  const rnd = seeded(seed + 1);
+  const leaves = icy ? snowLeafMats : leafMats;
+  let placed = 0;
+  const want = Math.round((maxX - minX + maxZ - minZ) * 0.9);
+  for (let tries = 0; tries < want * 15 && placed < want; tries++) {
+    const x = minX - 10 + rnd() * (maxX - minX + 20), z = minZ - 10 + rnd() * (maxZ - minZ + 20);
+    if (pointInPoly(x, z, P)) continue;
+    let far = true;
+    for (const s of segs) { closest(x, z, s[0], s[1], s[2], s[3]); if (Math.hypot(x - CX, z - CZ) < 1.6) { far = false; break; } }
+    if (!far) continue;
+    const kind = rnd();
+    if (kind < 0.62) {
+      const h = 1.8 + rnd() * 1.8, r = 0.7 + rnd() * 0.4;
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 0.9, 7), trunkMat);
+      tr.position.set(x, floorY + 0.45, z); tr.castShadow = true; g.add(tr);
+      for (let k = 0; k < 3; k++) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(r * (1 - k * 0.22), h * 0.55, 8), leaves[k % 3]);
+        cone.position.set(x, floorY + 0.85 + h * 0.25 + k * h * 0.22, z); cone.rotation.y = rnd() * 3; cone.castShadow = true; g.add(cone);
+      }
+    } else if (kind < 0.85) {
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4 + rnd() * 0.35, 0), leaves[Math.floor(rnd() * 3)]);
+      b.position.set(x, floorY + 0.15, z); b.scale.y = 0.7; b.castShadow = true; g.add(b);
+    } else {
+      const s2 = new THREE.Mesh(rockGeo(0.3 + rnd() * 0.4, 0.3, Math.floor(rnd() * 1e6)), rockMat);
+      s2.position.set(x, floorY, z); s2.castShadow = true; g.add(s2);
+    }
+    placed++;
+  }
+
+  scene.add(g);
+  courseGroup = g;
+  CC.center = new THREE.Vector3((minX + maxX) / 2, minH / 2, (minZ + maxZ) / 2);
+  CC.birdDist = Math.max(maxX - minX, maxZ - minZ) * 1.05 + 4;
+  C = CC;
+  const span = Math.max(maxX - minX, maxZ - minZ) / 2 + 4;
+  Object.assign(sun.shadow.camera, { left: -span, right: span, top: span, bottom: -span });
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.position.set(C.center.x + 10, 22, C.center.z + 8);
+  sun.target.position.copy(C.center);
+}
+// 旗子飄動、雲飄動、水流
+function animateScenery(t, dt) {
+  skyMat.uniforms.time.value = t;
+  if (flag && flagBase) {
+    const p = flag.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x = flagBase[i * 3];
+      p.setZ(i, Math.sin(x * 7 - t * 6) * 0.07 * x + Math.sin(t * 2.3) * 0.04 * x);
+    }
+    p.needsUpdate = true; flag.geometry.computeVertexNormals();
+  }
+  if (!C || !C.waterFx) return;
+  for (const w of C.waterFx) {
+    const [fx, fz] = w.flow, r = w.r;
+    // 貼圖座標是 (x, -z)，所以 x 方向要減、z 方向要加，水紋才會往水流方向走
+    w.tex.offset.x -= fx * 0.4 * dt; w.tex.offset.y += fz * 0.4 * dt;
+    if (!fx && !fz) w.tex.offset.x += dt * 0.02;
+    w.fm.opacity = 0.78 + 0.2 * Math.sin(t * 2.2 + w.seed);
+    const p = w.pos, x0 = r.x - r.w / 2 + 0.15, x1 = r.x + r.w / 2 - 0.15, z0 = r.z - r.d / 2 + 0.15, z1 = r.z + r.d / 2 - 0.15;
+    for (let i = 0; i < p.length; i += 3) {
+      let x = p[i] + (fx + Math.sin(t * 1.7 + i) * 0.1) * dt, z = p[i + 2] + (fz + Math.cos(t * 1.3 + i) * 0.1) * dt;
+      if (x > x1) x = x0; else if (x < x0) x = x1;
+      if (z > z1) z = z0; else if (z < z0) z = z1;
+      p[i] = x; p[i + 1] = C.h(x, z) + 0.035; p[i + 2] = z;
+    }
+    w.pg.attributes.position.needsUpdate = true;
+  }
+}
+
+/* ================= 球與軌跡 ================= */
+const TRAIL_N = 90;
+function makeTrail(color) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_N * 2 * 3), 3));
+  const idx = [];
+  for (let i = 0; i < TRAIL_N - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  geo.setIndex(idx);
+  geo.setDrawRange(0, 0);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+  m.frustumCulled = false;
+  scene.add(m);
+  return m;
+}
+function updateTrail(p, now) {
+  while (p.trailPts.length && now - p.trailPts[0].t > 1.1) p.trailPts.shift();
+  const pts = p.trailPts, pos = p.trail.geometry.attributes.position.array;
+  const n = Math.min(pts.length, TRAIL_N);
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    let dx = b.x - a.x, dz = b.z - a.z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    const age = (now - pts[i].t) / 1.1, w = BALL_R * 0.9 * (1 - age) * (i / Math.max(1, n - 1));
+    const ax = pts[i].x - dz * w, az = pts[i].z + dx * w, bx = pts[i].x + dz * w, bz = pts[i].z - dx * w;
+    pos.set([ax, C.h(ax, az) + 0.04, az, bx, C.h(bx, bz) + 0.04, bz], i * 6);
+  }
+  p.trail.geometry.attributes.position.needsUpdate = true;
+  p.trail.geometry.setDrawRange(0, Math.max(0, n - 1) * 6);
+}
+
+/* ================= 瞄準箭頭 ================= */
+const aimGroup = new THREE.Group();
+const arrowMat = new THREE.MeshBasicMaterial({ color: 0x4caf50, transparent: true, opacity: 0.9, depthWrite: false });
+const shaft = new THREE.Mesh(new THREE.BoxGeometry(1, 0.03, 0.13), arrowMat);
+const head = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 16), arrowMat);
+head.rotation.z = -Math.PI / 2;
+aimGroup.add(shaft, head);
+aimGroup.visible = false;
+scene.add(aimGroup);
+const pullGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+const pullLine = new THREE.Line(pullGeo, new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.15, gapSize: 0.1 }));
+pullLine.visible = false;
+scene.add(pullLine);
+
+function powerColor(p) { return new THREE.Color().setHSL(0.33 * (1 - p), 0.85, 0.5); }
+function showAim(x, z, ang, power, pullX, pullZ) {
+  const L = 0.3 + power * 3.2;
+  const gy = C.h(x, z);
+  aimGroup.position.set(x, gy + 0.1, z);
+  aimGroup.rotation.y = -ang;
+  shaft.scale.x = L; shaft.position.x = BALL_R + L / 2;
+  head.position.x = BALL_R + L + 0.18;
+  arrowMat.color.copy(powerColor(power));
+  aimGroup.visible = power > 0.01;
+  if (pullX !== undefined) {
+    const a = pullGeo.attributes.position.array;
+    a.set([x, gy + 0.06, z, pullX, C.h(pullX, pullZ) + 0.06, pullZ]);
+    pullGeo.attributes.position.needsUpdate = true;
+    pullLine.computeLineDistances();
+    pullLine.visible = true;
+  } else pullLine.visible = false;
+  $('power').classList.remove('hidden');
+  $('powerFill').style.height = (power * 100).toFixed(0) + '%';
+  $('powerFill').style.background = '#' + powerColor(power).getHexString();
+  $('powerTxt').textContent = Math.round(power * 100) + '%';
+}
+function hideAim() { aimGroup.visible = false; pullLine.visible = false; $('power').classList.add('hidden'); }
+
+/* ================= 球造型與名次紀錄 ================= */
+const PALETTE = ['#e5484d', '#3b82f6', '#f5a524', '#a855f7', '#14b8a6', '#ec4899'];
+const SKINS = [
+  { id: 'classic', name: '經典白', kind: 'stripe', base: '#ffffff', band: '#c9d2da', dot: '#ffffff' },
+  { id: 'mint', name: '薄荷', kind: 'stripe', base: '#c8f5e3', band: '#22a57c', dot: '#22a57c', cond: { type: 'played', n: 1 }, desc: '完成 1 場比賽' },
+  { id: 'star', name: '星空', kind: 'star', dot: '#5b5fd6', cond: { type: 'first', n: 1 }, desc: '拿到 1 次第 1 名' },
+  { id: 'melon', name: '西瓜', kind: 'melon', dot: '#3f9b3c', cond: { type: 'top2', n: 3 }, desc: '在 3 顆球以上的比賽拿到 3 次前 2 名' },
+  { id: 'ice', name: '冰晶', kind: 'ice', dot: '#7cc8ee', cond: { type: 'hardFirst', n: 1 }, desc: '用進階五洞拿到 1 次第 1 名', rough: 0.12 },
+  { id: 'lava', name: '熔岩', kind: 'lava', dot: '#ff6a1a', cond: { type: 'first', n: 3 }, desc: '拿到 3 次第 1 名' },
+  { id: 'gold', name: '黃金', kind: 'gold', dot: '#e0b84a', cond: { type: 'first', n: 5 }, desc: '拿到 5 次第 1 名', metal: 1, rough: 0.22 },
+  { id: 'rainbow', name: '彩虹', kind: 'rainbow', dot: '#f472b6', cond: { type: 'first', n: 10 }, desc: '拿到 10 次第 1 名' },
+];
+function dimples(g, w, h) {
+  g.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let y = 6; y < h; y += 10) for (let x = (y / 10 % 2) * 5; x < w; x += 10) { g.beginPath(); g.arc(x, y, 2.4, 0, 7); g.fill(); }
+}
+function crackLines(g, w, h, rnd, n, style, lw) {
+  g.strokeStyle = style; g.lineWidth = lw; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 0; i < n; i++) {
+    let x = rnd() * w, y = rnd() * h, a = rnd() * 6.28;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 5; k++) { a += (rnd() - 0.5) * 1.4; x += Math.cos(a) * (6 + rnd() * 16); y += Math.sin(a) * (6 + rnd() * 16); g.lineTo(x, y); }
+    g.stroke();
+  }
+}
+function lavaCracks(g, w, h) {
+  g.shadowColor = '#ff7a1a'; g.shadowBlur = 6;
+  crackLines(g, w, h, seeded(41), 16, '#ff8a24', 3);
+  g.shadowBlur = 0;
+  crackLines(g, w, h, seeded(43), 8, '#ffd36a', 1.2);
+}
+function drawSkin(s, g, w, h) {
+  const rnd = seeded(s.id.length * 977 + s.id.charCodeAt(0));
+  if (s.kind === 'stripe') { g.fillStyle = s.base; g.fillRect(0, 0, w, h); g.fillStyle = s.band; g.fillRect(0, 50, w, 28); }
+  else if (s.kind === 'star') {
+    g.fillStyle = '#141a45'; g.fillRect(0, 0, w, h);
+    const gr = g.createLinearGradient(0, 36, 0, 92); gr.addColorStop(0, 'rgba(130,90,230,0)'); gr.addColorStop(0.5, 'rgba(150,100,235,0.6)'); gr.addColorStop(1, 'rgba(130,90,230,0)');
+    g.fillStyle = gr; g.fillRect(0, 36, w, 56);
+    for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(255,255,255,${0.4 + rnd() * 0.6})`; g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 1.5, 1 + rnd() * 1.5); }
+    for (let i = 0; i < 7; i++) {
+      const x = rnd() * w, y = 20 + rnd() * (h - 40), r = 4 + rnd() * 3;
+      g.fillStyle = '#ffe680'; g.beginPath();
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, q = k % 2 ? r * 0.35 : r; g.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); }
+      g.fill();
+    }
+  } else if (s.kind === 'melon') {
+    g.fillStyle = '#58b34c'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#1f5e22'; g.lineWidth = 9; g.lineJoin = 'round';
+    for (let i = 0; i < 8; i++) { const x0 = i * w / 8 + 8; g.beginPath(); for (let y = -8; y <= h + 8; y += 8) g.lineTo(x0 + ((y / 8) % 2 ? 5 : -5), y); g.stroke(); }
+  } else if (s.kind === 'ice') {
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#d9f3ff'); gr.addColorStop(1, '#86c9ee');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    crackLines(g, w, h, rnd, 14, 'rgba(255,255,255,0.9)', 1.5);
+    crackLines(g, w, h, rnd, 8, 'rgba(50,130,185,0.55)', 1);
+  } else if (s.kind === 'lava') {
+    g.fillStyle = '#2a1712'; g.fillRect(0, 0, w, h);
+    lavaCracks(g, w, h);
+  } else if (s.kind === 'gold') {
+    const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#f6dc8a'); gr.addColorStop(0.5, '#d6a531'); gr.addColorStop(1, '#f0cf6e');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  } else if (s.kind === 'rainbow') {
+    for (let y = 0; y < h; y++) { g.fillStyle = `hsl(${y / h * 330},85%,60%)`; g.fillRect(0, y, w, 1); }
+  }
+  dimples(g, w, h);
+}
+const skinCache = {};
+function skinTex(s) {
+  if (!skinCache[s.id]) {
+    const map = canvasTex(256, 128, (g, w, h) => drawSkin(s, g, w, h));
+    const emi = s.kind === 'lava' ? canvasTex(256, 128, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); lavaCracks(g, w, h); }) : null;
+    skinCache[s.id] = { map, emi };
+  }
+  return skinCache[s.id];
+}
+function ballMaterial(p) {
+  if (p.skin) {
+    const s = p.skin, t = skinTex(s);
+    return new THREE.MeshStandardMaterial({ map: t.map, bumpMap: dimpleBump, bumpScale: 0.004, roughness: s.rough ?? 0.3, metalness: s.metal || 0,
+      emissive: t.emi ? 0xffffff : 0x000000, emissiveMap: t.emi, emissiveIntensity: t.emi ? 1 : 0 });
+  }
+  const map = canvasTex(256, 128, (g, w, h) => { g.fillStyle = p.color; g.fillRect(0, 0, w, h); g.fillStyle = '#ffffff'; g.fillRect(0, 50, w, 28); dimples(g, w, h); });
+  const m = new THREE.MeshStandardMaterial({ map, bumpMap: dimpleBump, bumpScale: 0.004, roughness: 0.3 });
+  m.userData.ownMap = true;
+  return m;
+}
+// 選單上的小圓球預覽
+function skinPreview(s, size) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = size;
+  const g = cv.getContext('2d'), src = skinTex(s).map.image;
+  g.save(); g.beginPath(); g.arc(size / 2, size / 2, size / 2 - 1, 0, 7); g.clip();
+  g.drawImage(src, 40, 0, 128, 128, 0, 0, size, size);
+  const hl = g.createRadialGradient(size * 0.35, size * 0.3, size * 0.04, size * 0.5, size * 0.5, size * 0.56);
+  hl.addColorStop(0, 'rgba(255,255,255,0.6)'); hl.addColorStop(0.4, 'rgba(255,255,255,0)'); hl.addColorStop(1, 'rgba(0,0,0,0.38)');
+  g.fillStyle = hl; g.fillRect(0, 0, size, size);
+  g.restore();
+  return cv;
+}
+function loadJSON(k, d) { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; } catch (e) { return d; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+const stats = Object.assign({ played: 0, first: 0, top2: 0, hardFirst: 0 }, loadJSON('minigolf_stats', {}));
+const unlocked = s => !s.cond || (stats[s.cond.type] || 0) >= s.cond.n;
+let skinId = loadJSON('minigolf_skin', 'classic');
+function curSkin() { const s = SKINS.find(k => k.id === skinId); return s && unlocked(s) ? s : SKINS[0]; }
+
+/* ================= 遊戲狀態 ================= */
+let players = [], holeIdx = 0, current = 0, state = 'menu', simTime = 0, gameId = 0;
+let mode = 'std', optCount = 2, optDiff = 'normal';
+let cHumans = 2, cAI = 1, cAIDiff = 'normal', cSet = 'normal';
+const cNames = ['', '', '', ''];
+let game = { humans: 1, ais: 2, set: 'normal', aiDiff: 'normal', counts: true };
+let think = null, aiShot = null, aimDrag = null, holes = COURSES.slice(), turnText = '';
+const active = () => players[current];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function createPlayers() {
+  players.forEach(p => {
+    scene.remove(p.mesh); scene.remove(p.trail); p.label.remove();
+    if (p.mesh.material.userData.ownMap) p.mesh.material.map.dispose();
+    p.mesh.material.dispose(); p.mesh.geometry.dispose(); p.trail.geometry.dispose(); p.trail.material.dispose();
+  });
+  players = [];
+  let ci = 0;
+  for (let i = 0; i < game.humans + game.ais; i++) {
+    const isAI = i >= game.humans, you = !isAI && game.humans === 1;
+    let name;
+    if (isAI) name = `電腦 ${i - game.humans + 1}`;
+    else if (you) name = (mode === 'custom' && cNames[0].trim()) || '你';
+    else name = cNames[i].trim() || `玩家 ${i + 1}`;
+    const skin = i === 0 ? curSkin() : null;
+    const color = skin ? skin.dot : PALETTE[ci++ % PALETTE.length];
+    const p = { name, color, skin, isAI, you, trailPts: [], x: 0, z: 0, vx: 0, vz: 0, lastX: 0, lastZ: 0,
+      strokes: 0, done: false, holed: false, sink: 0, scores: [], rx: 0, rz: 0, rollT: 0 };
+    p.mesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 32, 20), ballMaterial(p));
+    p.mesh.castShadow = true;
+    scene.add(p.mesh);
+    p.label = document.createElement('div');
+    p.label.className = 'label'; p.label.textContent = name;
+    $('labels').appendChild(p.label);
+    p.trail = makeTrail(color);
+    players.push(p);
+  }
+}
+
+function startGame() {
+  gameId++;
+  if (mode === 'std') game = { humans: 1, ais: optCount, set: optDiff, aiDiff: optDiff };
+  else game = { humans: cHumans, ais: cAI, set: cSet, aiDiff: cAIDiff };
+  game.counts = game.humans === 1 && game.ais >= 1;
+  holes = pickHoles(game.set);
+  createPlayers();
+  $('menu').classList.add('hidden');
+  $('card').classList.add('hidden');
+  $('hud').classList.remove('hidden');
+  startHole(0);
+}
+
+function startHole(i) {
+  holeIdx = i;
+  const def = holes[i];
+  buildCourse(def);
+  let dx = def.hole[0] - def.tee[0], dz = def.hole[1] - def.tee[1];
+  const L = Math.hypot(dx, dz); dx /= L; dz /= L;
+  players.forEach((p, k) => {
+    const off = (k - (players.length - 1) / 2) * 0.42;
+    p.x = p.lastX = def.tee[0] - dz * off; p.z = p.lastZ = def.tee[1] + dx * off;
+    p.rx = p.x; p.rz = p.z;
+    p.vx = p.vz = 0; p.strokes = 0; p.done = false; p.holed = false; p.sink = 0;
+    p.mesh.visible = true; p.trailPts = [];
+  });
+  $('holeNo').textContent = i + 1;
+  $('holeName').textContent = def.name;
+  $('par').textContent = def.par;
+  cam.bird = false;
+  current = 0;
+  const p = active();
+  cam.target.set(p.x, C.h(p.x, p.z), p.z);
+  cam.yaw = Math.atan2(-(def.hole[0] - p.x), -(def.hole[1] - p.z));
+  cam.yawGoal = null;
+  toast(`第 ${i + 1} 洞`, `${esc(def.name)}・標準桿 ${def.par}`);
+  beginTurn();
+}
+
+function beginTurn() {
+  const p = active();
+  cam.bird = false;
+  cam.yawGoal = Math.atan2(-(C.hole[0] - p.x), -(C.hole[1] - p.z));
+  if (p.isAI) startAI();
+  else {
+    state = 'aim';
+    if (game.humans > 1) toast(`輪到 ${esc(p.name)}`);
+  }
+  updateHUD();
+}
+
+function nextTurn() {
+  const n = players.length;
+  for (let k = 1; k <= n; k++) {
+    const idx = (current + k) % n;
+    if (!players[idx].done) { current = idx; beginTurn(); return; }
+  }
+  endHole();
+}
+function later(fn, ms) { const id = gameId; setTimeout(() => { if (id === gameId) fn(); }, ms); }
+
+function shoot(p, ang, power) {
+  p.lastX = p.x; p.lastZ = p.z;
+  p.strokes++;
+  p.vx = Math.cos(ang) * power * MAX_SPEED;
+  p.vz = Math.sin(ang) * power * MAX_SPEED;
+  p.trailPts = []; p.rollT = 0;
+  state = 'rolling';
+  hideAim();
+  updateHUD();
+}
+
+function scoreName(strokes, par) {
+  if (strokes === 1) return '一桿進洞！';
+  const d = strokes - par;
+  return ({ '-3': '信天翁！', '-2': '老鷹！', '-1': '博蒂！', '0': '平標準桿', '1': '柏忌', '2': '雙柏忌' })[d] || `+${d}`;
+}
+
+function onBallEvent(p, ev) {
+  if (ev === 'hole') {
+    state = 'sinking';
+    p.done = true; p.holed = true; p.sink = 0.0001;
+    p.scores[holeIdx] = p.strokes;
+    toast(p.you ? '進洞！' : `${esc(p.name)} 進洞`, `${p.strokes} 桿・${scoreName(p.strokes, C.def.par)}`);
+    updateHUD();
+    later(nextTurn, 1500);
+  } else if (ev === 'stop') {
+    state = 'pause';
+    if (p.strokes >= MAX_STROKES) {
+      p.done = true; p.scores[holeIdx] = MAX_STROKES;
+      toast(`${esc(p.name)} 達到 ${MAX_STROKES} 桿上限`);
+      updateHUD();
+      later(nextTurn, 1200);
+    } else later(nextTurn, 500);
+  }
+}
+
+/* ================= 電腦對手 ================= */
+function startAI() {
+  state = 'ai-think';
+  const p = active(), d = DIFF[game.aiDiff];
+  think = { p, d, done: 0, refineLeft: d.refine, best: null, shotTime: simTime + 1.8,
+    base: Math.atan2(C.hole[1] - p.z, C.hole[0] - p.x) };
+}
+function evalShot(r) {
+  if (r.ev === 'hole') return -100;
+  let s = fieldAt(C, r.x, r.z);
+  if (inAny(r.x, r.z, C.water)) s += 0.8;
+  if (inAny(r.x, r.z, C.sand)) s += 1.2;
+  return s;
+}
+function aiWork() {
+  const t0 = performance.now(), T = think, p = T.p;
+  while (performance.now() - t0 < 8) {
+    let ang, pow;
+    if (T.done < T.d.n) {
+      if (T.done % 5 < 2) { ang = T.base + (Math.random() - 0.5) * 1.0; }
+      else ang = Math.random() * Math.PI * 2;
+      pow = 0.08 + Math.random() * 0.92;
+      T.done++;
+    } else if (T.refineLeft > 0 && T.best) {
+      ang = T.best.ang + gauss() * 0.04;
+      pow = clamp(T.best.pow + gauss() * 0.05, 0.05, 1);
+      T.refineLeft--;
+    } else break;
+    const r = simulate(p.x, p.z, Math.cos(ang) * pow * MAX_SPEED, Math.sin(ang) * pow * MAX_SPEED, T.shotTime, C);
+    const s = evalShot(r);
+    if (!T.best || s < T.best.s) T.best = { ang, pow, s };
+  }
+  if (T.done >= T.d.n && (T.refineLeft <= 0 || !T.best)) {
+    const b = T.best;
+    aiShot = { p, ang: b.ang + gauss() * T.d.ang, pow: clamp(b.pow * (1 + gauss() * T.d.pow), 0.05, 1), time: T.shotTime };
+    think = null;
+    state = 'ai-wait';
+  }
+}
+
+/* ================= 每個物理步 ================= */
+function physicsTick() {
+  if (state === 'ai-wait' && simTime >= aiShot.time) shoot(aiShot.p, aiShot.ang, aiShot.pow);
+  if (state === 'rolling') {
+    const p = active();
+    p.rollT += DT;
+    let ev = step(p, simTime, C);
+    if (!ev && p.rollT > 20) { p.vx = p.vz = 0; ev = 'stop'; }   // 保險：滾太久就強制停下
+    if (ev) onBallEvent(p, ev);
+  }
+  // 靜止的球被移動方塊推開
+  if (C && (C.boxes.length || C.mills.length)) {
+    for (const p of players) {
+      if (p.done || (state === 'rolling' && p === active())) continue;
+      p.vx = p.vz = 0;
+      if (collideMoving(p, C, simTime)) collideStatic(p, C);
+      p.vx = p.vz = 0;
+    }
+  }
+  simTime += DT;
+}
+
+/* ================= 攝影機 ================= */
+const cam = { yaw: 0, pitch: 0.55, dist: 8, target: new THREE.Vector3(), yawGoal: null, bird: false, curDist: 8, curPitch: 0.55 };
+const keys = {};
+function updateCamera(dt) {
+  if (!C) return;
+  const rot = (keys.ArrowLeft || keys.KeyA ? 1 : 0) - (keys.ArrowRight || keys.KeyD ? 1 : 0);
+  if (rot) { cam.yaw += rot * 1.8 * dt; cam.yawGoal = null; }
+  const tilt = (keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0);
+  if (tilt) cam.pitch = clamp(cam.pitch + tilt * 1.0 * dt, 0.2, 1.4);
+  if (cam.yawGoal !== null) {
+    const d = angDiff(cam.yawGoal, cam.yaw);
+    cam.yaw += d * (1 - Math.exp(-dt * 4));
+    if (Math.abs(d) < 0.003) cam.yawGoal = null;
+  }
+  let goal, D, PT;
+  if (cam.bird) { goal = C.center; D = C.birdDist; PT = 1.25; }
+  else {
+    const p = active();
+    goal = p.holed ? new THREE.Vector3(C.hole[0], C.h(C.hole[0], C.hole[1]), C.hole[1]) : new THREE.Vector3(p.x, C.h(p.x, p.z), p.z);
+    D = cam.dist; PT = cam.pitch;
+  }
+  const k = 1 - Math.exp(-dt * 6);
+  cam.target.lerp(goal, k);
+  cam.curDist += (D - cam.curDist) * k;
+  cam.curPitch += (PT - cam.curPitch) * k;
+  const cp = Math.cos(cam.curPitch);
+  camera.position.set(
+    cam.target.x + Math.sin(cam.yaw) * cp * cam.curDist,
+    cam.target.y + Math.sin(cam.curPitch) * cam.curDist,
+    cam.target.z + Math.cos(cam.yaw) * cp * cam.curDist);
+  camera.lookAt(cam.target);
+}
+
+/* ================= 滑鼠操作 ================= */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function groundAt(e) {
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const p = active();
+  groundPlane.constant = -(p && C ? C.h(p.x, p.z) : 0);   // 以球所在高度的水平面來算拖曳位置
+  const v = new THREE.Vector3();
+  return ray.ray.intersectPlane(groundPlane, v) ? v : null;
+}
+function nearBall(e, p) {
+  const v = new THREE.Vector3(p.x, C.h(p.x, p.z) + BALL_R, p.z).project(camera);
+  const sx = (v.x + 1) / 2 * innerWidth, sy = (1 - v.y) / 2 * innerHeight;
+  if (Math.hypot(sx - e.clientX, sy - e.clientY) < 55) return true;
+  const g = groundAt(e);
+  return g && Math.hypot(g.x - p.x, g.z - p.z) < 0.9;
+}
+let drag = null;
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  if (state === 'menu') return;
+  canvas.setPointerCapture(e.pointerId);
+  const p = active();
+  if (e.button === 0 && state === 'aim' && !p.isAI && nearBall(e, p)) {
+    drag = { mode: 'aim' }; aimDrag = { ang: 0, power: 0 };
+    cam.bird = false; cam.yawGoal = null;
+    canvas.classList.add('aiming');
+    updateAim(e);
+  } else drag = { mode: 'orbit', x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  if (drag.mode === 'aim') updateAim(e);
+  else {
+    cam.yaw -= (e.clientX - drag.x) * 0.008;
+    cam.pitch = clamp(cam.pitch + (e.clientY - drag.y) * 0.005, 0.2, 1.4);
+    cam.yawGoal = null;
+    drag.x = e.clientX; drag.y = e.clientY;
+  }
+});
+function endDrag() {
+  if (drag && drag.mode === 'aim' && state === 'aim') {
+    if (aimDrag && aimDrag.power >= 0.05) shoot(active(), aimDrag.ang, aimDrag.power);
+    else hideAim();
+  }
+  drag = null; aimDrag = null;
+  canvas.classList.remove('aiming');
+}
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', () => { drag = null; aimDrag = null; hideAim(); canvas.classList.remove('aiming'); });
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist = clamp(cam.dist * (1 + e.deltaY * 0.001), 3, 30); }, { passive: false });
+function updateAim(e) {
+  const p = active(), g = groundAt(e);
+  if (!g) return;
+  let px = g.x - p.x, pz = g.z - p.z;
+  const len = Math.hypot(px, pz);
+  if (len < 1e-3) { aimDrag.power = 0; showAim(p.x, p.z, 0, 0, p.x, p.z); return; }
+  const L = Math.min(len, MAX_PULL);
+  px = px / len * L; pz = pz / len * L;
+  aimDrag.power = L / MAX_PULL;
+  aimDrag.ang = Math.atan2(-pz, -px);
+  showAim(p.x, p.z, aimDrag.ang, aimDrag.power, p.x + px, p.z + pz);
+}
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  keys[e.code] = true;
+  if (state === 'menu') return;
+  if (e.code === 'KeyV') cam.bird = !cam.bird;
+  if (e.code === 'Escape' && drag && drag.mode === 'aim') { drag = null; aimDrag = null; hideAim(); canvas.classList.remove('aiming'); }
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+/* ================= 介面 ================= */
+let toastTimer = null;
+function toast(msg, sub) {
+  const t = $('toast');
+  t.innerHTML = msg + (sub ? `<small>${sub}</small>` : '');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+const total = p => p.scores.reduce((a, b) => a + (b || 0), 0);
+function updateHUD() {
+  if (!players.length) return;
+  let h = '<table><tr><th>球員</th><th>本洞</th><th>總桿</th></tr>';
+  players.forEach((p, i) => {
+    const now = p.holed ? `${p.strokes} ✓` : p.strokes;
+    h += `<tr class="${i === current && !p.done ? 'cur' : ''}"><td><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</td><td>${now}</td><td>${total(p) + (p.done ? 0 : p.strokes)}</td></tr>`;
+  });
+  $('board').innerHTML = h + '</table>';
+  const p = active();
+  if (state === 'aim') turnText = `${p.you ? '輪到你' : '輪到 ' + p.name}（第 ${p.strokes + 1} 桿）：按住${game.humans > 1 ? '自己的' : ''}球往後拉，放開擊球`;
+  else if (state === 'ai-think' || state === 'ai-wait') turnText = `${p.name} 正在瞄準…`;
+  else if (state === 'rolling') turnText = `${p.you ? '你' : p.name} 擊球`;
+  $('turn').innerHTML = `<span class="dot" style="background:${p.color}"></span>${esc(turnText)}`;
+}
+function relCls(v, par) { return v < par ? 'under' : v > par ? 'over' : ''; }
+function scoreTable(upTo, rank) {
+  let h = '<table class="score-table"><tr><th>洞</th>';
+  for (let i = 0; i < holes.length; i++) h += `<th>${i + 1}</th>`;
+  h += '<th>總桿</th>' + (rank ? '<th>名次</th>' : '') + '</tr><tr><th>標準桿</th>';
+  let parSum = 0;
+  holes.forEach(c => { h += `<th>${c.par}</th>`; parSum += c.par; });
+  h += `<th>${parSum}</th>` + (rank ? '<th></th>' : '') + '</tr>';
+  players.forEach((p, k) => {
+    h += `<tr><td class="name"><span class="dot" style="background:${p.color}"></span>${esc(p.name)}</td>`;
+    holes.forEach((c, i) => {
+      const s = p.scores[i];
+      h += i <= upTo && s !== undefined ? `<td class="${relCls(s, c.par)}">${s}</td>` : '<td>-</td>';
+    });
+    let par = 0; for (let i = 0; i <= upTo; i++) par += holes[i].par;
+    const tt = total(p);
+    h += `<td class="${relCls(tt, par)}"><b>${tt}</b></td>` + (rank ? `<td><b>${rank[k]}</b></td>` : '') + '</tr>';
+  });
+  return h + '</table>';
+}
+function loadBest() { const v = loadJSON('minigolf_best', null); return v && typeof v.total === 'number' ? v : null; }
+function showBest() {
+  const b = loadBest();
+  $('best').textContent = b ? `你的最佳成績：${b.total} 桿（${b.date}）` : '還沒有最佳成績，打完一場就會記錄。';
+}
+
+function endHole() {
+  state = 'holeEnd';
+  hideAim();
+  const last = holeIdx === holes.length - 1, hp = players.filter(p => !p.isAI);
+  $('card').classList.remove('hidden');
+  if (!last) {
+    $('cardTitle').textContent = `第 ${holeIdx + 1} 洞結束`;
+    $('cardSub').textContent = hp.length === 1
+      ? `${hp[0].you ? '你' : hp[0].name}打了 ${hp[0].scores[holeIdx]} 桿：${scoreName(hp[0].scores[holeIdx], C.def.par)}`
+      : hp.map(p => `${p.name} ${p.scores[holeIdx]} 桿（${scoreName(p.scores[holeIdx], C.def.par)}）`).join('、');
+    $('cardBody').innerHTML = scoreTable(holeIdx);
+    $('cardBtn').textContent = '下一洞';
+    $('cardBtn').onclick = () => { $('card').classList.add('hidden'); startHole(holeIdx + 1); };
+    return;
+  }
+  state = 'gameEnd';
+  const totals = players.map(total), rank = totals.map(t => 1 + totals.filter(o => o < t).length);
+  const winners = players.filter((p, i) => rank[i] === 1);
+  const parSum = holes.reduce((a, c) => a + c.par, 0);
+  let sub, newly = [];
+  if (hp.length === 1) {
+    const me = players.indexOf(hp[0]), my = totals[me], r = rank[me];
+    if (players.length === 1) sub = '練習結束';
+    else sub = r === 1 ? (winners.length > 1 ? '並列第 1 名！' : '你贏了！') : `你拿到第 ${r} 名`;
+    sub += `　總桿數 ${my}（${my - parSum >= 0 ? '+' : ''}${my - parSum}）`;
+    const best = loadBest();
+    if (!best || my < best.total) {
+      const d = new Date();
+      saveJSON('minigolf_best', { total: my, date: `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}` });
+      sub += best ? `，刷新最佳成績（原本 ${best.total}）` : '，已記錄為最佳成績';
+    } else sub += `，最佳成績 ${best.total}`;
+    if (game.counts) {
+      const before = SKINS.filter(unlocked).map(s => s.id);
+      stats.played++;
+      if (r === 1) stats.first++;
+      if (players.length >= 3 && r <= 2) stats.top2++;
+      if (r === 1 && game.set === 'hard') stats.hardFirst++;
+      saveJSON('minigolf_stats', stats);
+      newly = SKINS.filter(s => unlocked(s) && !before.includes(s.id));
+    }
+  } else {
+    sub = winners.length === 1 ? `${winners[0].name} 獲勝！` : `平手：${winners.map(p => p.name).join('、')}`;
+  }
+  $('cardTitle').textContent = '比賽結束';
+  $('cardSub').textContent = sub;
+  $('cardBody').innerHTML = scoreTable(holeIdx, rank);
+  if (newly.length) {
+    const box = document.createElement('div'); box.className = 'unlock';
+    box.append('解鎖新造型：');
+    for (const s of newly) { box.appendChild(skinPreview(s, 30)); const b = document.createElement('span'); b.textContent = s.name; box.appendChild(b); }
+    const tip = document.createElement('small'); tip.textContent = '（到主選單的「球造型」換上）'; box.appendChild(tip);
+    $('cardBody').appendChild(box);
+    later(() => toast('解鎖新造型！', newly.map(s => esc(s.name)).join('、')), 400);
+  }
+  $('cardBtn').textContent = '再玩一次';
+  $('cardBtn').onclick = startGame;
+}
+function toMenu() {
+  gameId++;
+  state = 'menu';
+  hideAim();
+  players.forEach(p => { p.label.style.display = 'none'; });
+  $('hud').classList.add('hidden');
+  $('card').classList.add('hidden');
+  $('menu').classList.remove('hidden');
+  showBest(); refreshSkinBtn();
+}
+
+/* ---------- 主選單 ---------- */
+function bindSeg(id, set) {
+  $(id).querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    if (b.disabled) return;
+    $(id).querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); set(b.dataset.v);
+  }));
+}
+function setSeg(id, v) { $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === String(v))); }
+bindSeg('segMode', v => { mode = v; $('stdPanel').classList.toggle('hidden', v !== 'std'); $('customPanel').classList.toggle('hidden', v !== 'custom'); });
+bindSeg('segCount', v => optCount = +v);
+const DIFF_DESC = {
+  easy: '基本五洞，電腦失誤較多。',
+  normal: '第 1 洞固定，再從基本洞抽 2 洞、進階洞抽 2 洞，電腦中等。',
+  hard: '全部是進階洞（冰面、風車、立體地形、水流），電腦很準。',
+};
+function showDiff() { $('diffDesc').textContent = DIFF_DESC[optDiff]; }
+bindSeg('segDiff', v => { optDiff = v; showDiff(); });
+showDiff();
+
+// 自訂模式：最多 6 顆球
+function refreshCustom() {
+  $('segAI').querySelectorAll('button').forEach(b => { b.disabled = cHumans + +b.dataset.v > 6; });
+  if (cHumans + cAI > 6) { cAI = 6 - cHumans; setSeg('segAI', cAI); }
+  const box = $('nameInputs');
+  box.innerHTML = '';
+  for (let i = 0; i < cHumans; i++) {
+    const inp = document.createElement('input');
+    inp.maxLength = 8; inp.placeholder = cHumans === 1 ? '你' : `玩家 ${i + 1}`; inp.value = cNames[i];
+    inp.addEventListener('input', () => { cNames[i] = inp.value; });
+    box.appendChild(inp);
+  }
+  const n = cHumans + cAI;
+  $('customNote').textContent = `共 ${n} 顆球。` + (cHumans === 1 && cAI >= 1 ? '這場會計入名次紀錄。' : '這場不會計入名次紀錄（要 1 位玩家對電腦才會計入）。');
+  $('aiDiffRow').classList.toggle('hidden', cAI === 0);
+}
+bindSeg('segHumans', v => { cHumans = +v; refreshCustom(); });
+bindSeg('segAI', v => { cAI = +v; refreshCustom(); });
+bindSeg('segAIDiff', v => cAIDiff = v);
+bindSeg('segSet', v => cSet = v);
+refreshCustom();
+
+// 球造型選擇
+function refreshSkinBtn() { const c = $('skinMini'), g = c.getContext('2d'); g.clearRect(0, 0, 28, 28); g.drawImage(skinPreview(curSkin(), 28), 0, 0); }
+function renderSkins() {
+  $('statsLine').textContent = `已完成 ${stats.played} 場・第 1 名 ${stats.first} 次・前 2 名 ${stats.top2} 次・進階五洞第 1 名 ${stats.hardFirst} 次`;
+  const grid = $('skinGrid'); grid.innerHTML = '';
+  const cur = curSkin();
+  for (const s of SKINS) {
+    const ok = unlocked(s), card = document.createElement('button');
+    card.className = 'skin-card' + (ok ? '' : ' locked') + (cur.id === s.id ? ' sel' : '');
+    card.appendChild(skinPreview(s, 64));
+    const nm = document.createElement('b'); nm.textContent = (ok ? '' : '🔒 ') + s.name; card.appendChild(nm);
+    const st = document.createElement('small');
+    st.textContent = ok ? (cur.id === s.id ? '使用中' : '已解鎖，點一下換上') : `${s.desc}（${Math.min(stats[s.cond.type] || 0, s.cond.n)}/${s.cond.n}）`;
+    card.appendChild(st);
+    if (ok) card.onclick = () => { skinId = s.id; saveJSON('minigolf_skin', skinId); renderSkins(); refreshSkinBtn(); };
+    else card.disabled = true;
+    grid.appendChild(card);
+  }
+}
+$('btnSkins').onclick = () => { renderSkins(); $('skins').classList.remove('hidden'); };
+$('skinClose').onclick = () => $('skins').classList.add('hidden');
+
+$('btnStart').onclick = startGame;
+$('btnMenu').onclick = toMenu;
+$('btnBird').onclick = () => { cam.bird = !cam.bird; };
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ================= 主迴圈 ================= */
+let last = performance.now(), acc = 0, clock = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; clock += dt;
+  if (state !== 'menu' && C) {
+    if (state === 'ai-think' && think) aiWork();
+    acc += dt;
+    while (acc >= DT) { acc -= DT; physicsTick(); }
+    if (state === 'ai-wait' && aiShot) {
+      const left = aiShot.time - simTime, prog = clamp(1 - left / 1.0, 0, 1);
+      const p = aiShot.p;
+      showAim(p.x, p.z, aiShot.ang, aiShot.pow * prog);
+    }
+    for (const b of C.boxes) { boxAt(b, simTime); b.mesh.position.set(BX, C.h(BX, BZ) + 0.25, BZ); }
+    C.mills.forEach((m, i) => { C.millMeshes[i].rotation.y = -millAng(m, simTime); });
+    animateScenery(clock, dt);
+    for (const p of players) {
+      if (p.sink > 0) {
+        // 進洞：先滑到洞中央，再掉到洞底，球會留在洞裡看得到
+        p.sink += dt;
+        const k = Math.min(1, p.sink * 3), drop = Math.min(1, Math.max(0, p.sink * 4 - 0.4));
+        const hy = C.h(C.hole[0], C.hole[1]);
+        p.mesh.position.set(p.mesh.position.x + (C.hole[0] - p.mesh.position.x) * k, hy + BALL_R + (C.cupBottom - hy) * drop * drop, p.mesh.position.z + (C.hole[1] - p.mesh.position.z) * k);
+        if (p.sink > 0.6) p.sink = 0;
+      } else if (!p.holed) {
+        const dx = p.x - p.rx, dz = p.z - p.rz, d = Math.hypot(dx, dz);
+        if (d > 1e-5) {
+          p.mesh.rotateOnWorldAxis(new THREE.Vector3(dz / d, 0, -dx / d), d / BALL_R);
+          if (state === 'rolling' && p === active()) {
+            const lastPt = p.trailPts[p.trailPts.length - 1];
+            if (!lastPt || Math.hypot(lastPt.x - p.x, lastPt.z - p.z) > 0.08) p.trailPts.push({ x: p.x, z: p.z, t: clock });
+          }
+        }
+        p.mesh.position.set(p.x, C.h(p.x, p.z) + BALL_R, p.z);
+        p.rx = p.x; p.rz = p.z;
+      }
+      updateTrail(p, clock);
+    }
+    updateCamera(dt);
+    for (const p of players) {
+      if (!p.mesh.visible || p.holed) { p.label.style.display = 'none'; continue; }
+      const v = new THREE.Vector3(p.x, C.h(p.x, p.z) + BALL_R + 0.45, p.z).project(camera);
+      if (v.z > 1) { p.label.style.display = 'none'; continue; }
+      p.label.style.display = '';
+      p.label.style.left = ((v.x + 1) / 2 * innerWidth) + 'px';
+      p.label.style.top = ((1 - v.y) / 2 * innerHeight) + 'px';
+    }
+    if (state === 'rolling') updateHUD();
+  } else {
+    // 主選單背景：慢慢繞著第一洞轉
+    if (!C) buildCourse(COURSES[0]);
+    cam.bird = false;
+    cam.yaw += dt * 0.12;
+    cam.target.lerp(C.center, 0.05);
+    const D = C.birdDist * 0.8, P = 0.75, cp = Math.cos(P);
+    camera.position.set(cam.target.x + Math.sin(cam.yaw) * cp * D, cam.target.y + Math.sin(P) * D, cam.target.z + Math.cos(cam.yaw) * cp * D);
+    camera.lookAt(cam.target);
+    animateScenery(clock, dt);
+  }
+  sky.position.copy(camera.position);
+  renderer.render(scene, camera);
+}
+showBest();
+refreshSkinBtn();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
